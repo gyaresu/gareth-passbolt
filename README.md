@@ -15,6 +15,14 @@ mount key somewhere outside the repo:
 
 `~/.passbolt/licensekey/subscription_key.txt to /etc/passbolt/subscription_key.txt`
 
+## .env variables set container names
+use unique names when hosting multiple instances of this docker build
+
+```
+COMPOSE_PROJECT_NAME=passbolt_pro
+MAILPIT_CONTAINER_NAME=mailpit-03
+```
+
 ## bring up:
 
 `docker-compose -f docker-compose-pro-current.yaml up`
@@ -22,15 +30,6 @@ mount key somewhere outside the repo:
 ## bring down containers (not just ctrl+c)
 
 `docker-compose -f docker-compose-pro-current.yaml down`
-
-## lazydocker
-### containers
-
-```
-mailpit
-local_folder_name-db-1
-local_folder_name-passbolt-1
-```
 
 #### drop into a docker shell through lazydocker 
 `shift+E to shell container`
