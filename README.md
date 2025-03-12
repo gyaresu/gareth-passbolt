@@ -31,6 +31,10 @@ MAILPIT_CONTAINER_NAME=mailpit-03
 
 `docker-compose -f docker-compose-pro-current.yaml down`
 
+## remove persistent docker volumes after finished testing
+
+`docker-compose down --volumes`
+
 #### drop into a docker shell through lazydocker 
 `shift+E to shell container`
 
