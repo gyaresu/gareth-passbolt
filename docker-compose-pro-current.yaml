@@ -15,7 +15,7 @@ services:
     container_name: mailpit
     restart: unless-stopped
     volumes:
-      - ./data:/data
+      - mailpit_data:/data
     ports:
       - 8025:8025
       - 1025:1025
@@ -73,8 +73,9 @@ services:
       OIDC_SCOPES: "openid profile email"
       OIDC_VERIFY_SSL: "false"
     volumes:
-      - ./gpg_volume:/etc/passbolt/gpg
-      - ./jwt_volume:/etc/passbolt/jwt
+      - gpg_volume:/etc/passbolt/gpg
+      - jwt_volume:/etc/passbolt/jwt
+      - ./php-fpm/www.conf:/etc/php-fpm.d/www.conf
     command:
       - /bin/bash
       - -c
@@ -83,9 +84,11 @@ services:
     ports:
       - 80:80
       - 443:443
+      - 9000:9000
 
 volumes:
   database_volume:
   gpg_volume:
   jwt_volume:
   keycloak_data:
+  mailpit_data:
