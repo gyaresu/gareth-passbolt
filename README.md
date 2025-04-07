@@ -55,3 +55,7 @@ https://keycloak.local
 Create realm > create realm client > create client credential > create user > create user credential
 
 Blog post: ["Wanna use Keycloak to sign in to your Passbolt instance? Here's the way to go"](https://www.passbolt.com/blog/how-to-connect-keycloak-with-passbolt-for-sso)
+
+notes:
+ * typo: `/.well-known/openid-configuration` missing the first dot in blog post: _"OpenId configuration path: /well-known/openid-configuration"_
+ * Using Keycloak `20.0.3` as `quay.io/keycloak/keycloak:latest` had broken Java on macOS. ¯\_(ツ)_/¯
