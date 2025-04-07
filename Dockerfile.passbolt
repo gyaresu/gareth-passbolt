@@ -1,0 +1,5 @@
+FROM passbolt/passbolt:latest-pro
+# Copy your CA certificate into the appropriate directory
+COPY keys/rootCA.crt /usr/local/share/ca-certificates/rootCA.crt
+# Update the CA trust store
+RUN update-ca-certificates
