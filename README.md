@@ -59,3 +59,8 @@ Blog post: ["Wanna use Keycloak to sign in to your Passbolt instance? Here's the
 notes:
  * typo: `/.well-known/openid-configuration` missing the first dot in blog post: _"OpenId configuration path: /well-known/openid-configuration"_
  * Using Keycloak `20.0.3` as `quay.io/keycloak/keycloak:latest` had broken Java on macOS. ¯\_(ツ)_/¯
+
+[keycloak client](./assets/keycloak_client.png)
+[keycloak_user.png](./assets/keycloak_user.png)
+[passbolt_config.png](./assets/passbolt_config.png)
+[passbolt_oidc_login.png](./assets/passbolt_oidc_login.png)
