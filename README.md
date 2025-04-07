@@ -1,5 +1,6 @@
 # Passbolt Pro Docker compose file with MariaDB, Mailpit, and Keycloak.
 
+
 ## Mailpit SMTP server
 [http://passbolt.local:8025](http://passbolt.local:8025)
 
@@ -31,6 +32,7 @@ mount key somewhere outside the repo:
 mailpit
 local_folder_name-db-1
 local_folder_name-passbolt-1
+ubi8-minimal # keycloak build their image off UBI 8 Red Hat image
 ```
 
 #### drop into a docker shell through lazydocker 
@@ -52,4 +54,4 @@ passbolt register_user \
 https://keycloak.local
 Create realm > create realm client > create client credential > create user > create user credential
 
-
+Blog post: ["Wanna use Keycloak to sign in to your Passbolt instance? Here's the way to go"](https://www.passbolt.com/blog/how-to-connect-keycloak-with-passbolt-for-sso)
