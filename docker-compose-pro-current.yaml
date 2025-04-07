@@ -29,7 +29,7 @@ services:
     hostname: mailpit.local
 
   keycloak:
-    image: quay.io/keycloak/keycloak:latest
+    image: quay.io/keycloak/keycloak:20.0.3
     container_name: keycloak
     restart: unless-stopped
     environment:
@@ -41,13 +41,28 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_HTTPS: "false"
-    command: ["start-dev"]
+      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/server.crt.pem
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/server.key.pem
+    command: 
+      - start-dev
+      - --features admin-fine-grained-authz
     ports:
-      - 8080:8080
+      - 8081:8080
+      - 8787:8787
+      - 8443:8443
     volumes:
       - keycloak_data:/opt/keycloak/data
+      - ./keys/domain.crt:/opt/keycloak/conf/server.crt.pem
+      - ./keys/domain.key:/opt/keycloak/conf/server.key.pem
+    networks:
+      default:
+        aliases:
+          - keycloak.local
 
   passbolt:
+    build:
+      context: .
+      dockerfile: Dockerfile.passbolt
     image: passbolt/passbolt:latest-pro
     restart: unless-stopped
     depends_on:
@@ -67,7 +82,7 @@ services:
       # OIDC configuration for Keycloak
       PASSBOLT_PLUGINS_SSO_PROVIDER_OAUTH2_ENABLED: "true"
       OIDC_ENABLED: "true"
-      OIDC_ISSUER: "http://keycloak.local:8080/realms/master"
+      OIDC_ISSUER: "http://keycloak.local:8443/realms/master"
       OIDC_CLIENT_ID: "passbolt-client"
       OIDC_CLIENT_SECRET: "your-secret-here"
       OIDC_SCOPES: "openid profile email"
