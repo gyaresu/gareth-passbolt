@@ -117,14 +117,31 @@ services:
       LDAP_TLS_VERIFY_CLIENT: "never"
       LDAP_TLS_CIPHER_SUITE: "SECURE256"
       LDAP_TLS_PROTOCOL_MIN: "3.1"
+      LDAP_TLS_CERT_FILE: "/container/service/slapd/assets/certs/ldap.crt"
+      LDAP_TLS_KEY_FILE: "/container/service/slapd/assets/certs/ldap.key"
+      LDAP_TLS_CA_CERT_FILE: "/container/service/slapd/assets/certs/ca.crt"
+      LDAP_TLS_ENFORCE: "false"
+      LDAP_TLS_ENFORCE_CLIENT: "false"
+      # Initial data setup
+      LDAP_BASE_DN: "dc=passbolt,dc=local"
+      LDAP_USERS_DN: "ou=users,dc=passbolt,dc=local"
+      LDAP_GROUPS_DN: "ou=groups,dc=passbolt,dc=local"
+      LDAP_ADMIN_USER: "ada"
+      LDAP_ADMIN_EMAIL: "ada@passbolt.com"
+      LDAP_ADMIN_FIRSTNAME: "Ada"
+      LDAP_ADMIN_LASTNAME: "Ada"
+      LDAP_ADMIN_UID: "ada"
+      LDAP_ADMIN_GIVEN_NAME: "Ada"
+      LDAP_ADMIN_SN: "Ada"
+      LDAP_ADMIN_CN: "ada"
+      LDAP_ADMIN_DN: "cn=ada,ou=users,dc=passbolt,dc=local"
     ports:
       - "389:389"
       - "636:636"
     volumes:
       - ldap_data:/var/lib/ldap
       - ldap_config:/etc/ldap/slapd.d
-      - ./keys/domain.crt:/container/service/slapd/assets/certs/ldap.crt
-      - ./keys/domain.key:/container/service/slapd/assets/certs/ldap.key
+      - ldap_certs:/container/service/slapd/assets/certs
     networks:
       default:
         aliases:
@@ -132,9 +149,18 @@ services:
 
 volumes:
   database_volume:
+    name: pro_working_database_volume
   gpg_volume:
+    name: pro_working_gpg_volume
   jwt_volume:
+    name: pro_working_jwt_volume
   keycloak_data:
+    name: pro_working_keycloak_data
   mailpit_data:
+    name: pro_working_mailpit_data
   ldap_data:
+    name: pro_working_ldap_data
   ldap_config:
+    name: pro_working_ldap_config
+  ldap_certs:
+    name: pro_working_ldap_certs 
