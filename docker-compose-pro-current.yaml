@@ -101,9 +101,40 @@ services:
       - 443:443
       - 9000:9000
 
+  ldap:
+    image: osixia/openldap:1.5.0
+    container_name: ldap
+    restart: unless-stopped
+    environment:
+      LDAP_ORGANISATION: "Passbolt"
+      LDAP_DOMAIN: "passbolt.local"
+      LDAP_ADMIN_PASSWORD: "P4ssb0lt"
+      LDAP_CONFIG_PASSWORD: "P4ssb0lt"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "readonly"
+      LDAP_TLS: "true"
+      LDAP_TLS_VERIFY_CLIENT: "never"
+      LDAP_TLS_CIPHER_SUITE: "SECURE256"
+      LDAP_TLS_PROTOCOL_MIN: "3.1"
+    ports:
+      - "389:389"
+      - "636:636"
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+      - ./keys/domain.crt:/container/service/slapd/assets/certs/ldap.crt
+      - ./keys/domain.key:/container/service/slapd/assets/certs/ldap.key
+    networks:
+      default:
+        aliases:
+          - ldap.local
+
 volumes:
   database_volume:
   gpg_volume:
   jwt_volume:
   keycloak_data:
   mailpit_data:
+  ldap_data:
+  ldap_config:
