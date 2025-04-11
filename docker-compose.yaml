@@ -52,7 +52,7 @@ services:
       - 8443:8443
     volumes:
       - keycloak_data:/opt/keycloak/data
-      - ./keys/domain.crt:/opt/keycloak/conf/server.crt.pem
+      - ./keys/chain.crt:/opt/keycloak/conf/server.crt.pem
       - ./keys/domain.key:/opt/keycloak/conf/server.key.pem
     networks:
       default:
@@ -82,19 +82,26 @@ services:
       # OIDC configuration for Keycloak
       PASSBOLT_PLUGINS_SSO_PROVIDER_OAUTH2_ENABLED: "true"
       OIDC_ENABLED: "true"
-      OIDC_ISSUER: "http://keycloak.local:8443/realms/master"
+      OIDC_ISSUER: "https://keycloak.local:8443/realms/passbolt"
       OIDC_CLIENT_ID: "passbolt-client"
       OIDC_CLIENT_SECRET: "your-secret-here"
       OIDC_SCOPES: "openid profile email"
-      OIDC_VERIFY_SSL: "false"
+      OIDC_VERIFY_SSL: "true"
+      # PHP SSL configuration
+      PHP_OPENSSL_CAFILE: "/etc/ssl/certs/keycloak.crt"
+      PHP_CURL_SSL_VERIFYPEER: "1"
+      PHP_CURL_SSL_VERIFYHOST: "2"
     volumes:
       - gpg_volume:/etc/passbolt/gpg
       - jwt_volume:/etc/passbolt/jwt
       - ./php-fpm/www.conf:/etc/php-fpm.d/www.conf
+      - ./php-fpm/ssl.ini:/etc/php/8.2/cli/conf.d/99-ssl.ini
+      - ./keys/chain.crt:/usr/local/share/ca-certificates/keycloak.crt
     command:
       - /bin/bash
       - -c
       - |
+        update-ca-certificates
         /usr/bin/wait-for.sh -t 0 db:3306 -- /docker-entrypoint.sh
     ports:
       - 80:80
