@@ -1,4 +1,29 @@
+subscription_key.txt
+.DS_Store
 data
 gpg_volume
 jwt_volume
 error_logs
+
+# Generated realm files
+*.realm.json
+master-realm.json
+passbolt-realm.json
+
+# Generated certificates
+keys/*.crt
+keys/*.key
+keys/*.csr
+keys/*.srl
+keys/*.pem
+ldap-certs/*.crt
+ldap-certs/*.key
+ldap-certs/*.csr
+ldap-certs/*.pem
+
+# Keep directories but not their contents
+!keys/.gitkeep
+!ldap-certs/.gitkeep
+!config/db/.gitkeep
+!config/php/.gitkeep
+!config/ssl/.gitkeep
