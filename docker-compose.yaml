@@ -3,16 +3,17 @@ services:
     image: mariadb:10.11
     restart: unless-stopped
     environment:
-      MYSQL_RANDOM_ROOT_PASSWORD: "true"
+      MYSQL_ROOT_PASSWORD: "rootpassword"
       MYSQL_DATABASE: "passbolt"
       MYSQL_USER: "passbolt"
       MYSQL_PASSWORD: "P4ssb0lt"
     volumes:
       - database_volume:/var/lib/mysql
+      - ./config/db/init-keycloak-db.sql:/docker-entrypoint-initdb.d/init-keycloak-db.sql
 
   mailpit:
     image: axllent/mailpit
-    container_name: ${MAILPIT_CONTAINER_NAME}
+    container_name: mailpit
     restart: unless-stopped
     volumes:
       - mailpit_data:/data
@@ -29,9 +30,11 @@ services:
     hostname: mailpit.local
 
   keycloak:
-    image: quay.io/keycloak/keycloak:20.0.3
+    image: quay.io/keycloak/keycloak:26.3.0
     container_name: keycloak
     restart: unless-stopped
+    depends_on:
+      - db
     environment:
       # Development credentials
       KEYCLOAK_ADMIN: admin
@@ -43,17 +46,22 @@ services:
       KC_HOSTNAME_STRICT_HTTPS: "false"
       KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/server.crt.pem
       KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/server.key.pem
+      # Database configuration
+      KC_DB: mariadb
+      KC_DB_URL_HOST: db
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: passbolt
+      KC_DB_PASSWORD: P4ssb0lt
     command: 
       - start-dev
-      - --features admin-fine-grained-authz
     ports:
       - 8081:8080
       - 8787:8787
       - 8443:8443
     volumes:
       - keycloak_data:/opt/keycloak/data
-      - ./keys/chain.crt:/opt/keycloak/conf/server.crt.pem
-      - ./keys/domain.key:/opt/keycloak/conf/server.key.pem
+      - ./keys/keycloak-chain.crt:/opt/keycloak/conf/server.crt.pem
+      - ./keys/keycloak.key:/opt/keycloak/conf/server.key.pem
     networks:
       default:
         aliases:
@@ -84,7 +92,7 @@ services:
       OIDC_ENABLED: "true"
       OIDC_ISSUER: "https://keycloak.local:8443/realms/passbolt"
       OIDC_CLIENT_ID: "passbolt-client"
-      OIDC_CLIENT_SECRET: "your-secret-here"
+      OIDC_CLIENT_SECRET: "9cBUxO4c68E7SYJJJPJ8FjtIDLgMdHqi"
       OIDC_SCOPES: "openid profile email"
       OIDC_VERIFY_SSL: "true"
       # PHP SSL configuration
@@ -94,9 +102,10 @@ services:
     volumes:
       - gpg_volume:/etc/passbolt/gpg
       - jwt_volume:/etc/passbolt/jwt
-      - ./php-fpm/www.conf:/etc/php-fpm.d/www.conf
-      - ./php-fpm/ssl.ini:/etc/php/8.2/cli/conf.d/99-ssl.ini
-      - ./keys/chain.crt:/usr/local/share/ca-certificates/keycloak.crt
+      - ./config/php/www.conf:/etc/php-fpm.d/www.conf
+      - ./config/php/ssl.ini:/etc/php/8.2/cli/conf.d/99-ssl.ini
+      - ./keys/ca.crt:/usr/local/share/ca-certificates/keycloak.crt
+      - ./subscription_key.txt:/etc/passbolt/subscription_key.txt:ro
     command:
       - /bin/bash
       - -c
@@ -156,18 +165,18 @@ services:
 
 volumes:
   database_volume:
-    name: pro_working_database_volume
+    name: ${COMPOSE_PROJECT_NAME}_database_volume
   gpg_volume:
-    name: pro_working_gpg_volume
+    name: ${COMPOSE_PROJECT_NAME}_gpg_volume
   jwt_volume:
-    name: pro_working_jwt_volume
+    name: ${COMPOSE_PROJECT_NAME}_jwt_volume
   keycloak_data:
-    name: pro_working_keycloak_data
+    name: ${COMPOSE_PROJECT_NAME}_keycloak_data
   mailpit_data:
-    name: pro_working_mailpit_data
+    name: ${COMPOSE_PROJECT_NAME}_mailpit_data
   ldap_data:
-    name: pro_working_ldap_data
+    name: ${COMPOSE_PROJECT_NAME}_ldap_data
   ldap_config:
-    name: pro_working_ldap_config
+    name: ${COMPOSE_PROJECT_NAME}_ldap_config
   ldap_certs:
-    name: pro_working_ldap_certs 
+    name: ${COMPOSE_PROJECT_NAME}_ldap_certs
