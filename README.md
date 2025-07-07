@@ -1,66 +1,85 @@
-# Passbolt Pro Docker compose file with MariaDB, Mailpit, and Keycloak.
+# Passbolt Pro with Keycloak SSO Integration
 
+This repository contains a Docker Compose setup for testing and configuring Keycloak SSO with Passbolt Pro.
 
-## Mailpit SMTP server
-[http://passbolt.local:8025](http://passbolt.local:8025)
+## Quick Start
 
-## passbolt server
+1. Add host entries for `passbolt.local` and `keycloak.local`
+2. Add your Passbolt Pro subscription key to a file named `subscription_key.txt` in the project root
+3. Run `./scripts/generate-certificates.sh` to create SSL certificates
+4. Start the environment with `docker compose up -d`
+5. Follow the configuration steps in the [documentation](./DOCUMENTATION.md)
 
-edit your local hosts file: 
+> **Note:** A valid Passbolt Pro subscription key is required for this setup. This key should be placed in a file named `subscription_key.txt` in the project root directory. This file is excluded from version control for security reasons.
 
-`127.0.0.1 passbolt.local`
+## Documentation
 
-### passbolt license key
+For complete setup and configuration instructions, see:
 
-mount key somewhere outside the repo:
+- [Comprehensive Documentation](./DOCUMENTATION.md) - Complete guide with all technical details
 
-`~/.passbolt/licensekey/subscription_key.txt to /etc/passbolt/subscription_key.txt`
+## Key Features
 
-### bring up:
+- **Passbolt Pro** with OIDC plugin enabled
+- **Keycloak 26.3.0** configured for SSO
+- **MariaDB** database for both services
+- **LDAP** integration (optional)
+- **Mailpit** for email testing
 
-`docker-compose -f docker-compose-pro-current.yaml up`
+## Environment Components
 
-### bring down containers (not just ctrl+c)
+The Docker Compose environment includes:
 
-`docker-compose -f docker-compose-pro-current.yaml down`
+| Service   | URL                       | Credentials        |
+|-----------|---------------------------|-------------------|
+| Passbolt  | https://passbolt.local    | Created during setup |
+| Keycloak  | https://keycloak.local:8443 | admin / admin    |
+| Mailpit   | http://localhost:8025     | N/A               |
+| LDAP      | ldap://ldap.local:389     | cn=admin,dc=passbolt,dc=local / P4ssb0lt |
 
-### lazydocker
-
-#### containers
+## Repository Structure
 
 ```
-mailpit
-local_folder_name-db-1
-local_folder_name-passbolt-1
-ubi8-minimal # keycloak build their image off UBI 8 Red Hat image
+.
+├── assets/                 # Screenshots for documentation
+├── config/                 # Configuration files
+│   ├── db/                 # Database initialization scripts
+│   ├── php/                # PHP configuration files
+│   └── ssl/                # SSL configuration templates
+├── keys/                   # Certificate storage (generated)
+├── ldap-certs/             # LDAP certificates (generated)
+├── scripts/                # Utility scripts
+│   ├── generate-certificates.sh
+│   ├── ldap-entrypoint.sh
+│   ├── setup-ldap-certs.sh
+│   └── setup-ldap-data.sh
+├── docker-compose.yaml     # Docker Compose configuration
+├── Dockerfile.passbolt     # Custom Passbolt image definition
+├── DOCUMENTATION.md        # Comprehensive documentation
+└── README.md               # This file
 ```
 
-#### drop into a docker shell through lazydocker 
-`shift+E to shell container`
-
-## execute in passbolt container as user from host shell
-
-```
-docker-compose -f docker-compose-pro-current.yaml \
-exec passbolt su -m -c "/usr/share/php/passbolt/bin/cake \
-passbolt register_user \
--u ada@passbolt.com \
--f ada \
--l lovelace \
--r admin" -s /bin/sh www-data
-```
-
-## Keycloak
-https://keycloak.local
-Create realm > create realm client > create client credential > create user > create user credential
-
-Blog post: ["Wanna use Keycloak to sign in to your Passbolt instance? Here's the way to go"](https://www.passbolt.com/blog/how-to-connect-keycloak-with-passbolt-for-sso)
-
-notes:
- * typo: `/.well-known/openid-configuration` missing the first dot in blog post: _"OpenId configuration path: /well-known/openid-configuration"_
- * Using Keycloak `20.0.3` as `quay.io/keycloak/keycloak:latest` had broken Java on macOS. ¯\_(ツ)_/¯
+## Screenshots
 
 ![keycloak client](./assets/keycloak_client.png)
 ![keycloak_user.png](./assets/keycloak_user.png)
 ![passbolt_config.png](./assets/passbolt_config.png)
 ![passbolt_oidc_login.png](./assets/passbolt_oidc_login.png)
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a new Pull Request
+
+## License
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License (AGPL) as published by the Free Software Foundation version 3.
+
+The name "Passbolt" is a registered trademark of Passbolt SA, and Passbolt SA hereby declines to grant a trademark license to "Passbolt" pursuant to the GNU Affero General Public License version 3 Section 7(e), without a separate agreement with Passbolt SA.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along with this program. If not, see [GNU Affero General Public License v3](https://www.gnu.org/licenses/agpl-3.0.html).
