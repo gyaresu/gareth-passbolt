@@ -1,8 +1,13 @@
 #!/bin/bash
 
+# Define base directories
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="$(dirname "$SCRIPT_DIR")"
+TEMP_DIR="$BASE_DIR/tmp"
+
 # Stop all containers that might be using the volume
 echo "Stopping containers..."
-docker compose -f docker-compose-pro-current.yaml down
+cd "$BASE_DIR" && docker compose down
 
 # Remove the existing volumes to start fresh
 echo "Removing LDAP volumes..."
@@ -10,11 +15,11 @@ docker volume rm pro_working_ldap_data pro_working_ldap_config || true
 
 # Create custom LDIF file
 echo "Creating custom LDIF file..."
-mkdir -p ldap-data
+mkdir -p "$TEMP_DIR"
 
 # Start the LDAP container with the new data
 echo "Starting LDAP container..."
-docker compose -f docker-compose-pro-current.yaml up -d ldap
+cd "$BASE_DIR" && docker compose up -d ldap
 
 # Wait for LDAP to be ready
 echo "Waiting for LDAP to be ready..."
@@ -34,7 +39,7 @@ PASSWORD_HASH=$(docker exec ldap slappasswd -s "P4ssb0lt" -n)
 echo "Generated hash: $PASSWORD_HASH"
 
 # Create LDIF file with the hashed password
-cat > ldap-data/01-users.ldif << EOF
+cat > "$TEMP_DIR/01-users.ldif" << EOF
 # Create organizational unit for users
 dn: ou=users,dc=passbolt,dc=local
 objectClass: top
@@ -66,7 +71,7 @@ EOF
 
 # Add the LDIF data using ldapadd
 echo "Adding LDAP data..."
-docker cp ldap-data/01-users.ldif ldap:/tmp/01-users.ldif
+docker cp "$TEMP_DIR/01-users.ldif" ldap:/tmp/01-users.ldif
 docker exec ldap ldapadd -x -H ldap://localhost:389 -b "dc=passbolt,dc=local" -D "cn=admin,dc=passbolt,dc=local" -w "P4ssb0lt" -f /tmp/01-users.ldif
 
 # Check container logs for any issues
@@ -86,4 +91,4 @@ echo "Testing STARTTLS connection..."
 docker exec ldap ldapsearch -Z -x -H ldap://localhost:389 -b "dc=passbolt,dc=local" -D "cn=admin,dc=passbolt,dc=local" -w "P4ssb0lt"
 
 # Clean up
-rm -rf ldap-data 
+rm -rf "$TEMP_DIR" 

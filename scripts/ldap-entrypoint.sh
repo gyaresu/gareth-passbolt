@@ -4,9 +4,9 @@
 mkdir -p /container/service/slapd/assets/certs
 
 # Copy certificates with correct permissions
-cp /certs/domain.crt /container/service/slapd/assets/certs/
-cp /certs/domain.key /container/service/slapd/assets/certs/
-cp /certs/rootCA.crt /container/service/slapd/assets/certs/
+cp /certs/ldap.crt /container/service/slapd/assets/certs/
+cp /certs/ldap.key /container/service/slapd/assets/certs/
+cp /certs/ca.crt /container/service/slapd/assets/certs/
 
 # Set correct permissions
 chown -R openldap:openldap /container/service/slapd/assets/certs
