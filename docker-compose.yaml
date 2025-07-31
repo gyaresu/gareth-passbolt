@@ -87,14 +87,10 @@ services:
       EMAIL_TRANSPORT_DEFAULT_USERNAME: ""
       EMAIL_TRANSPORT_DEFAULT_PASSWORD: ""
       EMAIL_DEFAULT_FROM: "admin@passbolt.com"
-      # OIDC configuration for Keycloak
+      # SSO configuration for Keycloak
+      PASSBOLT_PLUGINS_SSO_ENABLED: "true"
       PASSBOLT_PLUGINS_SSO_PROVIDER_OAUTH2_ENABLED: "true"
-      OIDC_ENABLED: "true"
-      OIDC_ISSUER: "https://keycloak.local:8443/realms/passbolt"
-      OIDC_CLIENT_ID: "passbolt-client"
-      OIDC_CLIENT_SECRET: "9cBUxO4c68E7SYJJJPJ8FjtIDLgMdHqi"
-      OIDC_SCOPES: "openid profile email"
-      OIDC_VERIFY_SSL: "true"
+      PASSBOLT_SECURITY_SSO_SSL_VERIFY: "true"
       # PHP SSL configuration
       PHP_OPENSSL_CAFILE: "/etc/ssl/certs/keycloak.crt"
       PHP_CURL_SSL_VERIFYPEER: "1"
