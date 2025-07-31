@@ -27,3 +27,10 @@ ldap-certs/*.pem
 !config/db/.gitkeep
 !config/php/.gitkeep
 !config/ssl/.gitkeep
+keys/*.crt
+keys/*.key
+keys/*.srl
+ldap-certs/*.crt
+ldap-certs/*.key
+keys/
+ldap-certs/

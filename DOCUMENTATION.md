@@ -1,6 +1,6 @@
 # Keycloak SSO Integration with Passbolt Pro
 
-This comprehensive guide explains how to set up and configure Keycloak as a Single Sign-On (SSO) provider for Passbolt Pro, including best practices and troubleshooting tips.
+This guide explains how to set up and configure Keycloak as a Single Sign-On (SSO) provider for Passbolt Pro, including best practices and troubleshooting.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -18,10 +18,10 @@ This comprehensive guide explains how to set up and configure Keycloak as a Sing
 
 ## Overview
 
-This integration allows users to authenticate to Passbolt using their Keycloak credentials, providing a seamless single sign-on experience. The setup uses:
+This integration allows users to authenticate to Passbolt using their Keycloak credentials. The setup uses:
 
 - Passbolt Pro with OIDC plugin
-- Keycloak 26.3.0 (latest stable version)
+- Keycloak 26.3.0
 - MariaDB for both Passbolt and Keycloak databases
 - Optional LDAP integration
 
@@ -53,7 +53,7 @@ Run the certificate generation script:
 This creates:
 - A root CA certificate
 - Service-specific certificates for Keycloak and LDAP
-- Proper certificate chains with intuitive naming
+- Certificate chains with proper naming
 
 ### 3. Start the Environment
 
@@ -194,7 +194,7 @@ command:
     /usr/bin/wait-for.sh -t 0 db:3306 -- /docker-entrypoint.sh
 ```
 
-### Why This Approach Works Better
+### Benefits of This Approach
 
 1. **Standardization**: Uses the standard Linux certificate management system
 2. **Consistency**: Ensures consistent certificate verification across all PHP components
@@ -215,7 +215,7 @@ RUN update-ca-certificates
 ```
 
 This custom image:
-1. Uses the latest Passbolt Pro image as the base
+1. Uses the Passbolt Pro image as the base
 2. Adds the CA certificate to the trusted certificate store
 3. Updates the system's certificate trust store
 
@@ -279,21 +279,30 @@ passbolt:
 
 ## Passbolt Configuration
 
-The Passbolt container is pre-configured with these OIDC settings in docker-compose.yaml:
+The Passbolt container is configured with the SSO and OAuth2 SSO plugins enabled in docker-compose.yaml:
 
 ```yaml
+PASSBOLT_PLUGINS_SSO_ENABLED: "true"
 PASSBOLT_PLUGINS_SSO_PROVIDER_OAUTH2_ENABLED: "true"
-OIDC_ENABLED: "true"
-OIDC_ISSUER: "https://keycloak.local:8443/realms/passbolt"
-OIDC_CLIENT_ID: "passbolt-client"
-OIDC_CLIENT_SECRET: "9cBUxO4c68E7SYJJJPJ8FjtIDLgMdHqi"
-OIDC_SCOPES: "openid profile email"
-OIDC_VERIFY_SSL: "true"
+PASSBOLT_SECURITY_SSO_SSL_VERIFY: "true"
 ```
+
+### OAuth2 Configuration
+
+After starting Passbolt, you need to configure the OAuth2 SSO settings through the Passbolt web interface:
+
+1. Log in to Passbolt as an administrator
+2. Go to Administration → Authentication → SSO
+3. Configure the OAuth2 provider with these settings:
+   - **Issuer URL**: `https://keycloak.local:8443/realms/passbolt`
+   - **Client ID**: `passbolt-client`
+   - **Client Secret**: `9cBUxO4c68E7SYJJJPJ8FjtIDLgMdHqi`
+   - **Scopes**: `openid profile email`
+   - **SSL Verification**: Enabled
 
 ### Certificate Trust
 
-For secure communication, Passbolt must trust Keycloak's certificate:
+For secure communication, Passbolt needs to trust Keycloak's certificate:
 
 ```yaml
 PHP_OPENSSL_CAFILE: "/etc/ssl/certs/keycloak.crt"
@@ -311,9 +320,9 @@ The CA certificate is mounted in the container:
 
 1. Access Passbolt at https://passbolt.local
 2. Click "SSO Login"
-3. You'll be redirected to Keycloak
+3. You will be redirected to Keycloak
 4. Log in with the ada@passbolt.com / passbolt credentials
-5. You'll be redirected back to Passbolt and logged in
+5. You will be redirected back to Passbolt and logged in
 
 ## LDAP Integration
 
@@ -397,7 +406,7 @@ To map additional user attributes:
 ### Browser Integration
 
 By importing `rootCA.crt` into your browser:
-- The browser now trusts certificates signed by your root CA
+- The browser trusts certificates signed by your root CA
 - You can access `keycloak.local:8443` without SSL warnings
 - The browser can verify the full certificate chain
 
@@ -405,7 +414,7 @@ By importing `rootCA.crt` into your browser:
 
 - This guide uses Keycloak 26.3.0
 - The admin-fine-grained-authz feature is included by default in Keycloak 23+
-- Always keep both Keycloak and Passbolt updated with security patches
+- Keep both Keycloak and Passbolt updated with security patches
 
 ## Screenshots
 
