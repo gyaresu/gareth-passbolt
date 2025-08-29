@@ -28,6 +28,32 @@ verify_user_exists() {
     check_ldap_command
 }
 
+# Create admin user if it doesn't exist
+echo "Ensuring admin user exists..."
+ADMIN_EXISTS=$(docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
+    -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
+    -b "dc=passbolt,dc=local" "(cn=admin)" 2>/dev/null | grep -c "dn: cn=admin" || echo "0")
+
+if [ "$ADMIN_EXISTS" -eq "0" ]; then
+    echo "Creating admin user..."
+    cat > /tmp/admin_user.ldif << EOF
+dn: cn=admin,dc=passbolt,dc=local
+objectClass: simpleSecurityObject
+objectClass: organizationalRole
+cn: admin
+description: LDAP administrator
+userPassword: P4ssb0lt
+EOF
+    docker compose cp /tmp/admin_user.ldif ldap:/tmp/admin_user.ldif
+    docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/admin_user.ldif
+    check_ldap_command
+    docker compose exec ldap rm /tmp/admin_user.ldif
+    rm /tmp/admin_user.ldif
+    echo "Admin user created successfully"
+else
+    echo "Admin user already exists"
+fi
+
 # Create organizational units if they don't exist
 echo "Creating organizational units..."
 LDIF_FILE="/tmp/ous.ldif"

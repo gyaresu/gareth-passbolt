@@ -44,6 +44,9 @@ This script will:
 - Check for required certificate files
 - Verify Docker installation
 - Start all services
+- **Automatically fix LDAPS certificate bundle** (critical for LDAP connectivity)
+- Restart Passbolt to pick up the correct certificates
+- **Automatically create admin user 'ada'** (sends registration email to SMTP4Dev)
 - Provide access URLs
 
 ### Manual Setup
@@ -78,7 +81,7 @@ This script will:
    ./scripts/ldap/setup/initial-setup.sh
    ```
 
-7. **Create the default admin user:**
+7. **Create the default admin user (optional - now automatic in setup.sh):**
    ```bash
    ./scripts/ldap/setup/create-admin.sh
    ```
@@ -126,6 +129,31 @@ The setup uses a three-step certificate generation process:
    - Retrieves certificate chain from running LDAP server
    - Creates `certs/ldaps_bundle.crt` for Passbolt container
    - Mounted as `/etc/ssl/certs/ldaps_bundle.crt` in Passbolt container
+
+### Important: LDAP Certificate Setup
+
+**⚠️ Critical**: The LDAP server uses its own self-signed certificate issued by `docker-light-baseimage`. The `certs/ldaps_bundle.crt` file must contain the correct CA certificate for Passbolt to verify the LDAP server's certificate.
+
+**To fix certificate issues:**
+```bash
+# 1. Get the actual certificate chain from the LDAP server
+echo "" | openssl s_client -connect localhost:636 -servername ldap.local -showcerts 2>/dev/null | awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' > certs/ldap_server_chain.crt
+
+# 2. Extract the CA certificate (the second certificate in the chain)
+awk 'split_after==1{n++;split_after=0} /-----END CERTIFICATE-----/ {split_after=1} {print > ("certs/cert" n ".crt")}' certs/ldap_server_chain.crt
+
+# 3. Copy the CA certificate to the bundle
+cp certs/cert1.crt certs/ldaps_bundle.crt
+
+# 4. Restart Passbolt to pick up the new certificate
+docker compose restart passbolt
+```
+
+**Verify the certificate bundle contains the correct CA:**
+```bash
+openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 5 -B 5 "Subject:"
+# Should show: Subject: CN=docker-light-baseimage
+```
 
 ### Certificate System Overview
 
@@ -505,17 +533,37 @@ docker compose logs ldap
 ### Certificate Issues
 
 #### Certificate Verification Failures
-**Symptoms**: `verify error:num=19:self-signed certificate in certificate chain`
+**Symptoms**: `verify error:num=19:self-signed certificate in certificate chain` or "Can't contact LDAP server"
+
+**Root Cause**: The LDAP server uses its own self-signed certificate issued by `docker-light-baseimage`, but the certificate bundle contains the wrong CA certificate.
 
 **Solutions**:
-- Verify the LDAPS certificate bundle is properly mounted
-- Check that the certificate SAN matches `ldap.local`
-- Ensure the CA certificate is in the bundle
+1. **Verify the certificate bundle contains the correct CA:**
+   ```bash
+   openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 5 -B 5 "Subject:"
+   # Should show: Subject: CN=docker-light-baseimage
+   ```
 
-```bash
-# Verify certificate bundle
-openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 5 "Subject Alternative Name"
-```
+2. **If the CA is wrong, fix it:**
+   ```bash
+   # Get the actual certificate chain from LDAP server
+   echo "" | openssl s_client -connect localhost:636 -servername ldap.local -showcerts 2>/dev/null | awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' > certs/ldap_server_chain.crt
+   
+   # Extract the CA certificate (second certificate in chain)
+   awk 'split_after==1{n++;split_after=0} /-----END CERTIFICATE-----/ {split_after=1} {print > ("certs/cert" n ".crt")}' certs/ldap_server_chain.crt
+   
+   # Copy the CA certificate to the bundle
+   cp certs/cert1.crt certs/ldaps_bundle.crt
+   
+   # Restart Passbolt
+   docker compose restart passbolt
+   ```
+
+3. **Verify the certificate SAN matches:**
+   ```bash
+   openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 5 "Subject Alternative Name"
+   # Should show: DNS:ldap.local
+   ```
 
 #### Regenerate Certificates
 ```bash
@@ -565,6 +613,39 @@ docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
 - Verify LDAP search filters are correct
 - Check that users have the required `objectClass` attributes
 - Ensure the bind DN has proper search permissions
+
+### LDAP Admin User Issues
+**Symptoms**: "Can't contact LDAP server" during bind attempts
+
+**Root Cause**: The LDAP admin user `cn=admin,dc=passbolt,dc=local` may be missing from the LDAP directory.
+
+**Solutions**:
+1. **Check if admin user exists:**
+   ```bash
+   docker exec ldap ldapsearch -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w "P4ssb0lt" -b "dc=passbolt,dc=local" -x "(cn=admin)"
+   ```
+
+2. **If admin user is missing, create it:**
+   ```bash
+   # Create admin user LDIF file
+   cat > certs/admin_user.ldif << EOF
+   dn: cn=admin,dc=passbolt,dc=local
+   objectClass: simpleSecurityObject
+   objectClass: organizationalRole
+   cn: admin
+   description: LDAP administrator
+   userPassword: P4ssb0lt
+   EOF
+   
+   # Add admin user to LDAP
+   docker cp certs/admin_user.ldif ldap:/tmp/admin_user.ldif
+   docker exec ldap ldapadd -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w "P4ssb0lt" -f /tmp/admin_user.ldif
+   ```
+
+3. **Verify admin user was created:**
+   ```bash
+   docker exec ldap ldapsearch -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w "P4ssb0lt" -b "dc=passbolt,dc=local" -x "(cn=admin)"
+   ```
 
 ### Group Membership Issues
 **Symptoms**: Group memberships not syncing to Passbolt
@@ -620,6 +701,31 @@ chmod 600 keys/*.key smtp4dev/certs/*.key
 chmod 644 smtp4dev/certs/tls.pfx
 ```
 
+### LDAP Container Configuration Issues
+**Symptoms**: LDAPS connection fails after modifying docker-compose.yaml
+
+**Root Cause**: Adding incorrect environment variables to the osixia/openldap container can break its internal certificate management.
+
+**Solutions**:
+1. **Remove any custom LDAP_TLS_* environment variables** that are not documented in the osixia/openldap documentation
+2. **Use only the standard environment variables:**
+   ```yaml
+   LDAP_TLS: "true"
+   LDAP_TLS_VERIFY_CLIENT: "never"
+   LDAP_TLS_CIPHER_SUITE: "SECURE256"
+   LDAP_TLS_PROTOCOL_MIN: "3.1"
+   LDAP_TLS_CERT_FILE: "/container/service/slapd/assets/certs/ldap.crt"
+   LDAP_TLS_KEY_FILE: "/container/service/slapd/assets/certs/ldap.key"
+   LDAP_TLS_CA_CERT_FILE: "/container/service/slapd/assets/certs/ca.crt"
+   LDAP_TLS_ENFORCE: "true"
+   LDAP_TLS_ENFORCE_CLIENT: "false"
+   ```
+
+3. **Restart the LDAP container after removing incorrect variables:**
+   ```bash
+   docker compose restart ldap
+   ```
+
 #### Verify Certificate Files Exist
 ```bash
 ls -la certs/ldaps_bundle.crt
@@ -671,6 +777,7 @@ passbolt-docker-pro/
 │   │   ├── setup/                   # Setup scripts
 │   │   │   ├── initial-setup.sh    # Initial LDAP setup
 │   │   │   ├── create-admin.sh     # Create admin user
+│   │   │   ├── admin_user.ldif     # LDAP admin user definition
 │   │   │   └── reset-groups.sh     # Reset groups to initial state
 │   │   ├── add-edith.sh            # Quick Edith setup
 │   │   └── ldap-restore-user.sh    # Database user restoration
@@ -684,13 +791,14 @@ passbolt-docker-pro/
 │   ├── generate-certificates.sh     # Certificate generation
 │   ├── generate-smtp-certs.sh      # SMTP certificate generation
 │   ├── setup-ldap-certs.sh         # LDAP certificate setup
+│   ├── fix-ldaps-certificates.sh   # Fix LDAPS certificate bundle for Passbolt
 │   ├── setup-ldap-data.sh          # LDAP data setup
 │   ├── setup-ldap-users.sh         # LDAP users setup
 │   ├── generate-ldaps-certs.sh     # LDAPS bundle generation
 │   ├── ldap-entrypoint.sh          # LDAP container entrypoint
 │   └── setup.sh                    # Automated setup
 ├── certs/                           # Certificate files
-│   └── ldaps_bundle.crt            # LDAPS certificate bundle
+│   └── ldaps_bundle.crt            # LDAPS certificate bundle (contains CA certificate for LDAP server verification)
 ├── ldap-certs/                      # LDAP certificates
 │   ├── ldap.crt                    # LDAP server certificate
 │   ├── ldap.key                    # LDAP private key
