@@ -11,23 +11,26 @@ services:
       - database_volume:/var/lib/mysql
       - ./config/db/init-keycloak-db.sql:/docker-entrypoint-initdb.d/init-keycloak-db.sql
 
-  mailpit:
-    image: axllent/mailpit
-    container_name: mailpit
+  smtp4dev:
+    image: rnwood/smtp4dev:v3
+    container_name: smtp4dev
     restart: unless-stopped
-    volumes:
-      - mailpit_data:/data
     ports:
-      - 8025:8025
-      - 1025:1025
+      - '5050:80'    # Web interface
+      - '465:25'     # Implicit TLS SMTP
+    volumes:
+      - ./smtp4dev/certs:/certs:ro
+      - smtp4dev_data:/smtp4dev
     environment:
-      MP_MAX_MESSAGES: 5000
-      MP_DATABASE: /data/mailpit.db
-      MP_SMTP_AUTH_ACCEPT_ANY: 1
-      MP_SMTP_AUTH_ALLOW_INSECURE: 1
-      MP_SMTP_BIND_ADDR: "0.0.0.0:1025"
-      MP_SMTP_HOSTNAME: mailpit.local
-    hostname: mailpit.local
+      - ServerOptions__Urls=http://*:80
+      - ServerOptions__HostName=smtp.local
+      - ServerOptions__TlsMode=ImplicitTls
+      - ServerOptions__TlsCertificate=/certs/tls.pfx
+      - ServerOptions__TlsCertificatePassword=changeme
+    networks:
+      default:
+        aliases:
+          - smtp.local
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.3.0
@@ -82,10 +85,19 @@ services:
       DATASOURCES_DEFAULT_USERNAME: "passbolt"
       DATASOURCES_DEFAULT_PASSWORD: "P4ssb0lt"
       DATASOURCES_DEFAULT_DATABASE: "passbolt"
-      EMAIL_TRANSPORT_DEFAULT_HOST: "mailpit"
-      EMAIL_TRANSPORT_DEFAULT_PORT: 1025 
+      EMAIL_TRANSPORT_DEFAULT_HOST: "ssl://smtp.local"
+      EMAIL_TRANSPORT_DEFAULT_PORT: 25
       EMAIL_TRANSPORT_DEFAULT_USERNAME: ""
       EMAIL_TRANSPORT_DEFAULT_PASSWORD: ""
+      PASSBOLT_PLUGINS_SMTP_SETTINGS_SECURITY_SSL_VERIFY_PEER: true
+      PASSBOLT_PLUGINS_SMTP_SETTINGS_SECURITY_SSL_VERIFY_PEER_NAME: true
+      PASSBOLT_PLUGINS_SMTP_SETTINGS_SECURITY_SSL_ALLOW_SELF_SIGNED: true
+      PASSBOLT_PLUGINS_SMTP_SETTINGS_SECURITY_SSL_CAFILE: "/etc/ssl/certs/smtp_local.crt"
+      # LDAP Directory Sync configuration
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_ENABLED: "true"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_ENABLED: "true"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_VERIFY_PEER: "true"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_CAFILE: "/etc/ssl/certs/ldaps_bundle.crt"
       EMAIL_DEFAULT_FROM: "admin@passbolt.com"
       # SSO configuration for Keycloak
       PASSBOLT_PLUGINS_SSO_ENABLED: "true"
@@ -101,6 +113,8 @@ services:
       - ./config/php/www.conf:/etc/php-fpm.d/www.conf
       - ./config/php/ssl.ini:/etc/php/8.2/cli/conf.d/99-ssl.ini
       - ./keys/ca.crt:/usr/local/share/ca-certificates/keycloak.crt
+      - ./smtp4dev/certs/tls.crt:/etc/ssl/certs/smtp_local.crt:ro
+      - ./certs/ldaps_bundle.crt:/etc/ssl/certs/ldaps_bundle.crt:ro
       - ./subscription_key.txt:/etc/passbolt/subscription_key.txt:ro
     command:
       - /bin/bash
@@ -112,10 +126,15 @@ services:
       - 80:80
       - 443:443
       - 9000:9000
+    networks:
+      default:
+        aliases:
+          - passbolt.local
 
   ldap:
     image: osixia/openldap:1.5.0
     container_name: ldap
+    hostname: ldap.local
     restart: unless-stopped
     environment:
       LDAP_ORGANISATION: "Passbolt"
@@ -132,7 +151,7 @@ services:
       LDAP_TLS_CERT_FILE: "/container/service/slapd/assets/certs/ldap.crt"
       LDAP_TLS_KEY_FILE: "/container/service/slapd/assets/certs/ldap.key"
       LDAP_TLS_CA_CERT_FILE: "/container/service/slapd/assets/certs/ca.crt"
-      LDAP_TLS_ENFORCE: "false"
+      LDAP_TLS_ENFORCE: "true"
       LDAP_TLS_ENFORCE_CLIENT: "false"
       # Initial data setup
       LDAP_BASE_DN: "dc=passbolt,dc=local"
@@ -168,8 +187,8 @@ volumes:
     name: ${COMPOSE_PROJECT_NAME}_jwt_volume
   keycloak_data:
     name: ${COMPOSE_PROJECT_NAME}_keycloak_data
-  mailpit_data:
-    name: ${COMPOSE_PROJECT_NAME}_mailpit_data
+  smtp4dev_data:
+    name: ${COMPOSE_PROJECT_NAME}_smtp4dev_data
   ldap_data:
     name: ${COMPOSE_PROJECT_NAME}_ldap_data
   ldap_config:
