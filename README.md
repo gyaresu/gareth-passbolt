@@ -137,7 +137,7 @@ The setup uses a three-step certificate generation process:
 **To fix certificate issues:**
 ```bash
 # 1. Get the actual certificate chain from the LDAP server
-echo "" | openssl s_client -connect localhost:636 -servername ldap.local -showcerts 2>/dev/null | awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' > certs/ldap_server_chain.crt
+echo "" | openssl s_client -connect ldap.local:636 -servername ldap.local -showcerts 2>/dev/null | awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' > certs/ldap_server_chain.crt
 
 # 2. Extract the CA certificate (the second certificate in the chain)
 awk 'split_after==1{n++;split_after=0} /-----END CERTIFICATE-----/ {split_after=1} {print > ("certs/cert" n ".crt")}' certs/ldap_server_chain.crt
@@ -547,7 +547,7 @@ docker compose logs ldap
 2. **If the CA is wrong, fix it:**
    ```bash
    # Get the actual certificate chain from LDAP server
-   echo "" | openssl s_client -connect localhost:636 -servername ldap.local -showcerts 2>/dev/null | awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' > certs/ldap_server_chain.crt
+echo "" | openssl s_client -connect ldap.local:636 -servername ldap.local -showcerts 2>/dev/null | awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' > certs/ldap_server_chain.crt
    
    # Extract the CA certificate (second certificate in chain)
    awk 'split_after==1{n++;split_after=0} /-----END CERTIFICATE-----/ {split_after=1} {print > ("certs/cert" n ".crt")}' certs/ldap_server_chain.crt
@@ -682,7 +682,7 @@ docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
 #### Manual Email Test
 Send a test email using SMTP4Dev API:
 ```bash
-curl -X POST http://localhost:5050/api/v2/messages \
+curl -X POST http://smtp.local:5050/api/v2/messages \
   -H "Content-Type: application/json" \
   -d '{
     "to": "test@example.com",
