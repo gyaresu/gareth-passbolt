@@ -1,4 +1,4 @@
-# Passbolt Pro Demonstration Stack
+lect # Passbolt Pro Demonstration Stack
 
 **Example/Demo Repository** - Docker Compose setup for testing and demonstrating Passbolt Pro with SSO integration, LDAPS directory synchronization, and TLS/SSL security for web services, LDAP, and SMTP.
 
@@ -106,13 +106,13 @@ This script will:
 | Passbolt  | https://passbolt.local    | Created during setup | Main application |
 | Keycloak  | https://keycloak.local:8443 | admin / admin    | SSO provider |
 | SMTP4Dev  | http://smtp.local:5050    | N/A               | Email testing |
-| LDAP      | ldaps://ldap.local:636    | cn=admin,dc=passbolt,dc=local / P4ssb0lt | User directory |
+| LDAP      | ldaps://ldap.local:636    | cn=readonly,dc=passbolt,dc=local / readonly | User directory (read-only sync) |
 
 ## LDAPS Configuration
 
 ### Certificate Generation and Management
 
-The setup uses a three-step certificate generation process:
+The setup uses a streamlined certificate process:
 
 1. **`./scripts/generate-certificates.sh`** - Creates the certificate hierarchy:
    - Root CA certificate (`keys/rootCA.crt`)
@@ -120,15 +120,16 @@ The setup uses a three-step certificate generation process:
    - LDAP private key (`ldap-certs/ldap.key`)
    - LDAP certificate chain (`ldap-certs/ldap-chain.crt`)
 
-2. **`./scripts/setup-ldap-certs.sh`** - Deploys certificates to LDAP container:
+2. **`./scripts/setup-ldap-certs.sh`** - Deploys certificates to LDAP container (manual step):
    - Copies certificates to Docker volume `ldap_certs`
    - Sets proper permissions (644 for certs, 911:911 ownership)
    - Creates symlink `ca.pem` → `ca.crt`
 
-3. **`./scripts/generate-ldaps-certs.sh`** - Creates Passbolt LDAPS bundle:
-   - Retrieves certificate chain from running LDAP server
-   - Creates `certs/ldaps_bundle.crt` for Passbolt container
+3. **`./scripts/fix-ldaps-certificates.sh`** - Automatically fixes Passbolt LDAPS bundle:
+   - Extracts actual certificate chain from running LDAP server
+   - Creates `certs/ldaps_bundle.crt` with correct CA certificate
    - Mounted as `/etc/ssl/certs/ldaps_bundle.crt` in Passbolt container
+   - **Called automatically by `setup.sh`**
 
 ### Important: LDAP Certificate Setup
 
@@ -158,8 +159,8 @@ openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 5 -B 5 "Subject:"
 ### Certificate System Overview
 
 - **Root CA**: Self-signed Certificate Authority (`keys/rootCA.crt`)
-- **LDAP Certificate**: Signed by the root CA with `CN=ldap.local` and proper SAN
-- **LDAPS Bundle**: Certificate chain retrieved from LDAP server for Passbolt verification
+- **LDAP Certificate**: The LDAP server uses its own self-signed certificate (issued by `docker-light-baseimage`)
+- **LDAPS Bundle**: Contains the CA certificate from the LDAP server for Passbolt verification
 - **SMTP Certificate**: For secure email communication
 - **Keycloak Certificate**: For SSO integration
 
@@ -188,10 +189,12 @@ Configure in Passbolt web interface under Organization Settings > Directory:
 - **Host**: `ldap.local`
 - **Port**: `636`
 - **Protocol**: `LDAPS`
-- **Username**: `cn=readonly,dc=passbolt,dc=local`
+- **Username**: `cn=readonly,dc=passbolt,dc=local` (recommended for security)
 - **Password**: `readonly`
 - **Domain**: `passbolt.local`
 - **Base DN**: `dc=passbolt,dc=local`
+
+> **Note**: The readonly user is automatically created by the LDAP container and has read-only access to the directory, which is the recommended approach for Passbolt directory synchronization. Passbolt directory sync is **one-way read-only** - it reads user and group data from LDAP but does not write back to LDAP.
 
 #### Directory Settings
 - **Users Path**: `ou=users`
@@ -211,7 +214,27 @@ Configure in Passbolt web interface under Organization Settings > Directory:
 - **CA Certificate**: `/etc/ssl/certs/ldaps_bundle.crt` (automatically mounted from `certs/ldaps_bundle.crt`)
 - **Allow Self-Signed**: `Enabled`
 
+#### Directory Synchronization Behavior
+- **Direction**: **One-way read-only** from LDAP to Passbolt
+- **User Management**: Users are created/updated in Passbolt based on LDAP data
+- **Group Management**: Group memberships are synced from LDAP to Passbolt
+- **No Write Back**: Passbolt never writes user or group data back to LDAP
+- **User Activation**: Users must still activate their Passbolt accounts after sync
+
 > **Note**: The CA Certificate path `/etc/ssl/certs/ldaps_bundle.crt` is automatically configured in the Passbolt container via Docker volume mount. This file contains the certificate chain from the LDAP server, allowing Passbolt to verify the LDAPS connection.
+
+> **Important**: The LDAP admin user `cn=admin,dc=passbolt,dc=local` is automatically created during the setup process for administrative operations. For Passbolt directory synchronization, use the readonly user `cn=readonly,dc=passbolt,dc=local` which is also automatically created by the LDAP container.
+
+### Directory Synchronization Workflow
+
+1. **LDAP as Source of Truth**: User and group data is managed in LDAP
+2. **Passbolt Sync**: Passbolt reads user/group data from LDAP during synchronization
+3. **User Creation**: New LDAP users are automatically created in Passbolt
+4. **User Updates**: Changes to LDAP users (name, email, group membership) are synced to Passbolt
+5. **User Deactivation**: Users removed from LDAP can be suspended or deleted in Passbolt (configurable)
+6. **No Reverse Sync**: Passbolt user data (passwords, resources, etc.) is never written to LDAP
+
+**Key Point**: LDAP serves as the authoritative source for user identity and group membership, while Passbolt manages its own application-specific data independently.
 
 ## Keycloak SSO Configuration
 
@@ -570,11 +593,11 @@ echo "" | openssl s_client -connect ldap.local:636 -servername ldap.local -showc
 # Step 1: Generate new certificate hierarchy
 ./scripts/generate-certificates.sh
 
-# Step 2: Deploy certificates to LDAP container
+# Step 2: Deploy certificates to LDAP container (optional - for custom certificates)
 ./scripts/setup-ldap-certs.sh
 
-# Step 3: Generate LDAPS bundle for Passbolt (requires LDAP to be running)
-./scripts/generate-ldaps-certs.sh
+# Step 3: Fix LDAPS bundle for Passbolt (automatic in setup.sh)
+./scripts/fix-ldaps-certificates.sh
 
 # Step 4: Restart services to pick up new certificates
 docker compose down && docker compose up -d
@@ -613,6 +636,10 @@ docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
 - Verify LDAP search filters are correct
 - Check that users have the required `objectClass` attributes
 - Ensure the bind DN has proper search permissions
+- Run manual synchronization in Passbolt UI
+- Check that users have valid email addresses (required for Passbolt)
+
+**Note**: Remember that sync is one-way from LDAP to Passbolt. Changes to user data must be made in LDAP, not in Passbolt.
 
 ### LDAP Admin User Issues
 **Symptoms**: "Can't contact LDAP server" during bind attempts
@@ -794,7 +821,7 @@ passbolt-docker-pro/
 │   ├── fix-ldaps-certificates.sh   # Fix LDAPS certificate bundle for Passbolt
 │   ├── setup-ldap-data.sh          # LDAP data setup
 │   ├── setup-ldap-users.sh         # LDAP users setup
-│   ├── generate-ldaps-certs.sh     # LDAPS bundle generation
+│   ├── generate-ldaps-certs.sh     # LDAPS bundle generation (legacy)
 │   ├── ldap-entrypoint.sh          # LDAP container entrypoint
 │   └── setup.sh                    # Automated setup
 ├── certs/                           # Certificate files
