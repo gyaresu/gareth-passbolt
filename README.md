@@ -214,27 +214,12 @@ Configure in Passbolt web interface under Organization Settings > Directory:
 - **CA Certificate**: `/etc/ssl/certs/ldaps_bundle.crt` (automatically mounted from `certs/ldaps_bundle.crt`)
 - **Allow Self-Signed**: `Enabled`
 
-#### Directory Synchronization Behavior
-- **Direction**: **One-way read-only** from LDAP to Passbolt
-- **User Management**: Users are created/updated in Passbolt based on LDAP data
-- **Group Management**: Group memberships are synced from LDAP to Passbolt
-- **No Write Back**: Passbolt never writes user or group data back to LDAP
-- **User Activation**: Users must still activate their Passbolt accounts after sync
-
 > **Note**: The CA Certificate path `/etc/ssl/certs/ldaps_bundle.crt` is automatically configured in the Passbolt container via Docker volume mount. This file contains the certificate chain from the LDAP server, allowing Passbolt to verify the LDAPS connection.
 
 > **Important**: The LDAP admin user `cn=admin,dc=passbolt,dc=local` is automatically created during the setup process for administrative operations. For Passbolt directory synchronization, use the readonly user `cn=readonly,dc=passbolt,dc=local` which is also automatically created by the LDAP container.
 
-### Directory Synchronization Workflow
-
-1. **LDAP as Source of Truth**: User and group data is managed in LDAP
-2. **Passbolt Sync**: Passbolt reads user/group data from LDAP during synchronization
-3. **User Creation**: New LDAP users are automatically created in Passbolt
-4. **User Updates**: Changes to LDAP users (name, email, group membership) are synced to Passbolt
-5. **User Deactivation**: Users removed from LDAP can be suspended or deleted in Passbolt (configurable)
-6. **No Reverse Sync**: Passbolt user data (passwords, resources, etc.) is never written to LDAP
-
-**Key Point**: LDAP serves as the authoritative source for user identity and group membership, while Passbolt manages its own application-specific data independently.
+### Directory Synchronization
+**One-way read-only** from LDAP to Passbolt. LDAP serves as the source of truth for user identity and group membership. Passbolt reads user/group data during sync but never writes back to LDAP.
 
 ## Keycloak SSO Configuration
 
