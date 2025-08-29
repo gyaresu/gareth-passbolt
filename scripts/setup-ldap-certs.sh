@@ -1,26 +1,31 @@
 #!/bin/bash
 
-# Define base directories
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BASE_DIR="$(dirname "$SCRIPT_DIR")"
-LDAP_CERTS_DIR="$BASE_DIR/ldap-certs"
+# Copy custom LDAP certificates to the Docker volume
+set -e
 
-# Source the .env file to get the project name
-if [ -f "$BASE_DIR/.env" ]; then
-    export $(grep -v '^#' "$BASE_DIR/.env" | xargs)
-fi
+echo "Setting up LDAP certificates..."
 
-# Copy certificates to LDAP volume
-docker run --rm -v ${COMPOSE_PROJECT_NAME}_ldap_certs:/certs -v "$LDAP_CERTS_DIR":/source alpine sh -c "\
-    rm -f /certs/* && \
-    cp /source/ldap.crt /certs/ldap.crt && \
-    cp /source/ldap.key /certs/ldap.key && \
-    cp /source/ldap-chain.crt /certs/ca.crt && \
-    chmod 644 /certs/ldap.crt && \
-    chmod 644 /certs/ldap.key && \
-    chmod 644 /certs/ca.crt && \
-    chown -R 911:911 /certs && \
-    ln -sf /certs/ca.crt /certs/ca.pem"
+# Stop LDAP container if running
+echo "Stopping LDAP container..."
+docker compose stop ldap 2>/dev/null || true
 
-echo "LDAP certificates updated"
-docker run --rm -v ${COMPOSE_PROJECT_NAME}_ldap_certs:/certs alpine ls -la /certs 
+# Create a temporary container to copy files to the volume
+echo "Copying certificates to LDAP volume..."
+docker run --rm -v ldap_certs:/certs -v $(pwd)/ldap-certs:/source alpine:latest sh -c "
+  cp /source/ldap.crt /certs/
+  cp /source/ldap.key /certs/
+  cp /source/ca.crt /certs/
+  chmod 644 /certs/*.crt
+  chmod 600 /certs/*.key
+  chown 911:911 /certs/*
+"
+
+echo "Starting LDAP container..."
+docker compose up -d ldap
+
+echo "LDAP certificates setup complete!"
+echo "Waiting for LDAP to start..."
+sleep 5
+
+echo "Testing LDAP certificate..."
+echo "" | openssl s_client -connect localhost:636 -servername ldap.local 2>/dev/null | openssl x509 -text -noout | grep -A 5 -B 5 "Subject:" || echo "Certificate test failed - LDAP may still be starting" 

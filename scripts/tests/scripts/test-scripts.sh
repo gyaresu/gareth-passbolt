@@ -56,7 +56,7 @@ verify_user_in_group() {
 # Test user management scripts
 echo -e "${YELLOW}Testing User Management Scripts...${NC}"
 echo "Test: Adding a user with add.sh..."
-./scripts/ldap/users/add.sh "script@passbolt.com" "Script Test User" "script"
+./scripts/ldap/users/add.sh "Script" "Test User" "script@passbolt.com"
 if verify_user_exists "script@passbolt.com"; then
     echo -e "${GREEN}✓ User added successfully${NC}"
 else
@@ -74,7 +74,7 @@ else
 fi
 
 echo "Test: Adding another user to group with add-user.sh..."
-./scripts/ldap/users/add.sh "script2@passbolt.com" "Script Test User 2" "script2"
+./scripts/ldap/users/add.sh "Script2" "Test User 2" "script2@passbolt.com"
 ./scripts/ldap/groups/add-user.sh "script2@passbolt.com" "scriptgroup"
 if verify_user_in_group "script2@passbolt.com" "scriptgroup"; then
     echo -e "${GREEN}✓ User added to group successfully${NC}"
