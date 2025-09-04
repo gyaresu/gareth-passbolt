@@ -1,17 +1,17 @@
-lect # Passbolt Pro Demonstration Stack
+# Passbolt Pro Demonstration Stack
 
-**Example/Demo Repository** - Docker Compose setup for testing and demonstrating Passbolt Pro with SSO integration, LDAPS directory synchronization, and TLS/SSL security for web services, LDAP, and SMTP.
+Docker Compose setup for testing Passbolt Pro with SSO integration, LDAPS directory synchronization, and TLS/SSL security.
 
-> **⚠️ Demo Environment**: This repository contains demo credentials and self-signed certificates for testing purposes only. Do not use in production without proper security configuration.
+> Demo Environment: This repository contains demo credentials and self-signed certificates for testing only. Do not use in production without proper security configuration.
 
 ## What This Demonstrates
 
-- **Passbolt Pro** with OIDC SSO integration (Keycloak over TLS)
-- **LDAP over TLS** for directory synchronization
-- **SMTP over TLS** for secure email communication
-- **HTTP over TLS** for Passbolt and Keycloak web interfaces
-- **Testing environment** with email, database, and user management
-- **Certificate automation** for development and testing scenarios
+- Passbolt Pro with OIDC SSO integration (Keycloak over TLS)
+- LDAP over TLS for directory synchronization
+- SMTP over TLS for secure email communication
+- HTTP over TLS for Passbolt and Keycloak web interfaces
+- Testing environment with email, database, and user management
+- Certificate automation for development and testing scenarios
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ lect # Passbolt Pro Demonstration Stack
 ## Quick Start
 
 ### Automated Setup
-For the fastest setup, use the automated setup script:
+Use the automated setup script:
 ```bash
 ./scripts/setup.sh
 ```
@@ -44,60 +44,60 @@ This script will:
 - Check for required certificate files
 - Verify Docker installation
 - Start all services
-- **Automatically fix LDAPS certificate bundle** (critical for LDAP connectivity)
-- Restart Passbolt to pick up the correct certificates
-- **Automatically create admin user 'ada'** (sends registration email to SMTP4Dev)
+- Extract LDAP certificates from container
+- Rebuild Passbolt container with the correct certificate bundle
+- Create admin user 'ada' (sends registration email to SMTP4Dev)
 - Provide access URLs
 
 ### Manual Setup
 
-1. **Add host entries:**
+1. Add host entries:
    ```bash
    echo "127.0.0.1 passbolt.local keycloak.local ldap.local smtp.local" | sudo tee -a /etc/hosts
    ```
 
-2. **Add Passbolt Pro subscription key:**
+2. Add Passbolt Pro subscription key:
    ```bash
    cp /path/to/your/subscription_key.txt ./subscription_key.txt
    ```
 
-3. **Generate SSL certificates:**
+3. Generate SSL certificates:
    ```bash
    ./scripts/generate-certificates.sh
    ```
 
-4. **Make scripts executable:**
+4. Make scripts executable:
    ```bash
    chmod +x scripts/ldap/*/*.sh scripts/tests/*/*.sh
    ```
 
-5. **Start the environment:**
+5. Start the environment:
    ```bash
    docker compose up -d
    ```
 
-6. **Setup LDAP test data:**
+6. Setup LDAP test data:
    ```bash
    ./scripts/ldap/setup/initial-setup.sh
    ```
 
-7. **Create the default admin user (optional - now automatic in setup.sh):**
+7. Create the default admin user (optional - now automatic in setup.sh):
    ```bash
    ./scripts/ldap/setup/create-admin.sh
    ```
 
-8. **Configure LDAPS in Passbolt:**
+8. Configure LDAPS in Passbolt:
    - Log in to Passbolt as an administrator
    - Go to Organization Settings > Users Directory
    - Configure LDAPS settings (see LDAPS Configuration section)
 
-> **Important**: The order of operations is crucial. LDAP users must be set up before creating the Passbolt admin user to ensure proper synchronization.
+> Important: The order of operations is crucial. LDAP users must be set up before creating the Passbolt admin user to ensure proper synchronization.
 
-> **SMTP Configuration Note**: When configuring SMTP in Passbolt UI, set "Use TLS" to **No** because TLS is implicit (enabled via `ssl://smtp.local`). The certificate CN must match `smtp.local`.
+> SMTP Configuration Note: When configuring SMTP in Passbolt UI, set "Use TLS" to No because SMTPS (implicit TLS) is used (enabled via `ssl://smtp.local`). The certificate CN must match `smtp.local`.
 
-> **Required**: Valid Passbolt Pro subscription key in `subscription_key.txt` in the project root.
+> Required: Valid Passbolt Pro subscription key in `subscription_key.txt` in the project root.
 
-> **Demo Credentials**: All passwords and credentials in this repository are for demonstration purposes only. In production, use strong, unique credentials and proper certificate authorities.
+> Demo Credentials: All passwords and credentials in this repository are for demonstration purposes only. In production, use strong, unique credentials and proper certificate authorities.
 
 ## Services Overview
 
@@ -106,14 +106,14 @@ This script will:
 | Passbolt  | https://passbolt.local    | Created during setup | Main application |
 | Keycloak  | https://keycloak.local:8443 | admin / admin    | SSO provider |
 | SMTP4Dev  | http://smtp.local:5050    | N/A               | Email testing |
-| LDAP      | ldap.local:636 (LDAPS)   | cn=readonly,dc=passbolt,dc=local / readonly | User directory (read-only sync) |
-| LDAP      | ldap.local:389 (STARTTLS) | cn=admin,dc=passbolt,dc=local / P4ssb0lt | User directory (admin access) |
+| LDAP      | ldap.local:636 (LDAPS (implicit TLS))   | cn=readonly,dc=passbolt,dc=local / readonly | User directory (read-only sync) |
+| LDAP      | ldap.local:389 (LDAP with STARTTLS (explicit TLS upgrade)) | cn=admin,dc=passbolt,dc=local / P4ssb0lt | User directory (admin access) |
 
 ## LDAP Configuration
 
 ### osixia/openldap Docker Image
 
-This setup uses the **osixia/openldap:1.5.0** Docker image, which provides a fully configured OpenLDAP server with TLS support. The image is based on osixia/light-baseimage and includes automatic certificate generation and LDAP configuration.
+This setup uses the osixia/openldap:1.5.0 Docker image, which provides a fully configured OpenLDAP server with TLS support. The image is based on osixia/light-baseimage and includes automatic certificate generation and LDAP configuration.
 
 ### LDAP Server Environment Variables
 
@@ -128,7 +128,7 @@ LDAP_ADMIN_PASSWORD: "P4ssb0lt"
 LDAP_CONFIG_PASSWORD: "P4ssb0lt"
 
 # TLS Configuration
-LDAP_TLS: "true"                    # Enables TLS capabilities (both LDAPS and STARTTLS)
+LDAP_TLS: "true"                    # Enables TLS capabilities (both LDAPS (implicit TLS) and LDAP with STARTTLS (explicit TLS upgrade))
 LDAP_TLS_VERIFY_CLIENT: "never"     # Allows unverified client certificates
 
 # Readonly User (for Passbolt directory sync)
@@ -145,80 +145,73 @@ LDAP_GROUPS_DN: "ou=groups,dc=passbolt,dc=local"
 
 The setup supports two LDAP connection methods:
 
-#### Default: LDAPS (Port 636) - Currently Used by Passbolt
-- **Port**: 636
-- **Method**: LDAPS (implicit SSL/TLS)
-- **Compatibility**: Works reliably with Passbolt PHP LDAP extension
-- **Setup**: Automatic via `./scripts/setup.sh`
-- **Certificate**: Uses server's self-signed certificate with CA bundle
+- **LDAPS (implicit TLS)**: Port 636 (typically) - Currently used by Passbolt
+- **LDAP with STARTTLS (explicit TLS upgrade)**: Port 389 (typically) - Alternative for Passbolt
 
-#### Alternative: STARTTLS (Port 389) - Available for External Clients
-- **Port**: 389
-- **Method**: STARTTLS (explicit TLS upgrade)
-- **Compatibility**: Works for external LDAP clients
-- **Setup**: Automatic via `LDAP_TLS=true` environment variable
-- **Certificate**: Same certificate as LDAPS
+Both methods use the same certificate configuration and are automatically enabled via `LDAP_TLS=true`.
 
 ### osixia/openldap Features
 
 The osixia/openldap image provides several key features:
 
 #### Automatic Certificate Generation
-- **Self-signed certificates**: Generated automatically using the container hostname
-- **Certificate location**: `/container/service/slapd/assets/certs/`
-- **Files created**:
+- Self-signed certificates: Generated automatically using the container hostname
+- Certificate location: `/container/service/slapd/assets/certs/`
+- Files created:
   - `ldap.crt` - Server certificate
   - `ldap.key` - Private key
   - `ca.crt` - CA certificate (docker-light-baseimage)
   - `dhparam.pem` - DH parameters
+- Certificate extraction: The `fix-ldaps-certificates.sh` script automatically extracts these certificates from the running container to create the certificate bundle used by Passbolt
 
 #### TLS Configuration
-- **LDAP_TLS=true**: Enables both LDAPS (port 636) and STARTTLS (port 389)
-- **LDAP_TLS_VERIFY_CLIENT=never**: Allows unverified client certificates
-- **Automatic TLS setup**: No manual certificate configuration required
+- LDAP_TLS=true: Enables both LDAPS (implicit TLS) (port 636) and LDAP with STARTTLS (explicit TLS upgrade) (port 389)
+- LDAP_TLS_VERIFY_CLIENT=never: Allows unverified client certificates
+- Automatic TLS setup: No manual certificate configuration required
 
 #### User Management
-- **Admin user**: `cn=admin,dc=passbolt,dc=local` with password `P4ssb0lt`
-- **Readonly user**: `cn=readonly,dc=passbolt,dc=local` with password `readonly`
-- **Automatic user creation**: Users and groups created via bootstrap LDIF files
+- Admin user: `cn=admin,dc=passbolt,dc=local` with password `P4ssb0lt`
+- Readonly user: `cn=readonly,dc=passbolt,dc=local` with password `readonly`
+- Automatic user creation: Users and groups created via bootstrap LDIF files
 
 ### Certificate Management
 
-The setup uses a streamlined certificate process that **downloads certificates from the LDAP server**:
+The setup uses a streamlined certificate process that extracts certificates directly from the LDAP container:
 
-1. **`./scripts/generate-certificates.sh`** - Creates SMTP certificates only
-2. **`./scripts/fix-ldaps-certificates.sh`** - Downloads LDAP server certificate:
-   - Extracts actual certificate from running LDAP server
-   - Creates `certs/ldap-local.crt` with the server's certificate
+1. `./scripts/generate-certificates.sh` - Creates SMTP certificates only
+2. `./scripts/fix-ldaps-certificates.sh` - Extracts LDAP certificates from container:
+   - Extracts server certificate from `/container/service/slapd/assets/certs/ldap.crt`
+   - Extracts CA certificate from `/container/service/slapd/assets/certs/ca.crt`
+   - Creates `certs/ldaps_bundle.crt` with both server and CA certificates
+   - Creates `certs/ldap-local.crt` with server certificate only (backward compatibility)
    - Built into Passbolt container during build process
-   - **Called automatically by `setup.sh`**
+   - Called automatically by `setup.sh`
 
-### Switching to LDAPS (Alternative Configuration)
+### Passbolt Configuration
 
-To use LDAPS instead of STARTTLS, edit `docker-compose.yaml`:
+The setup is currently configured to use LDAPS (implicit TLS) on port 636. To switch to LDAP with STARTTLS (explicit TLS upgrade), edit `docker-compose.yaml`:
 
 ```yaml
-# Change these lines in the passbolt service environment:
+# Current (LDAPS):
 PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_PORT: "636"
 PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_SSL: "true"
 PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_TLS: "false"
+
+# Alternative (STARTTLS):
+PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_PORT: "389"
+PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_SSL: "false"
+PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_TLS: "true"
 ```
 
-Then rebuild the container:
-```bash
-docker compose build passbolt
-docker compose up -d passbolt
-```
-
-**Note**: Both STARTTLS and LDAPS work with the current LDAP server configuration. STARTTLS is set as the default for better PHP LDAP extension compatibility.
+Then rebuild: `docker compose build passbolt && docker compose up -d passbolt`
 
 ### Certificate System Overview
 
-- **Root CA**: Self-signed Certificate Authority (`keys/rootCA.crt`)
-- **LDAP Certificate**: The LDAP server uses its own self-signed certificate (issued by `docker-light-baseimage`)
-- **LDAPS Bundle**: Contains the CA certificate from the LDAP server for Passbolt verification
-- **SMTP Certificate**: For secure email communication
-- **Keycloak Certificate**: For SSO integration
+- Root CA: Self-signed Certificate Authority (`keys/rootCA.crt`)
+- LDAP Certificate: The LDAP server uses its own self-signed certificate (issued by `docker-light-baseimage`)
+- LDAPS Bundle: Contains the CA certificate from the LDAP server for Passbolt verification
+- SMTP Certificate: For secure email communication
+- Keycloak Certificate: For SSO integration
 
 ### LDAP Directory Structure
 
@@ -240,55 +233,39 @@ dc=passbolt,dc=local
 ### Passbolt LDAP Settings
 
 Configure in Passbolt web interface under Organization Settings > Directory:
+- Host: `ldap.local`
+- Port: `636` (LDAPS) or `389` (STARTTLS)
+- Username: `cn=readonly,dc=passbolt,dc=local`
+- Password: `readonly`
+- Base DN: `dc=passbolt,dc=local`
+- Verify SSL/TLS certificate: Checked (certificate bundle is trusted)
 
-#### Server Configuration (LDAPS - Current Default)
-- **Host**: `ldap.local`
-- **Port**: `636`
-- **Use SSL**: ✅ **Checked** (implicit SSL/TLS)
-- **Use TLS**: ❌ **Unchecked**
-- **Verify SSL/TLS certificate**: ✅ **Checked** (certificate is trusted)
-- **Username**: `cn=readonly,dc=passbolt,dc=local` (recommended for security)
-- **Password**: `readonly`
-- **Domain**: `passbolt.local`
-- **Base DN**: `dc=passbolt,dc=local`
-
-#### Server Configuration (STARTTLS - Alternative)
-- **Host**: `ldap.local`
-- **Port**: `389`
-- **Use SSL**: ❌ **Unchecked** (we're using STARTTLS, not SSL)
-- **Use TLS**: ✅ **Checked** (this enables STARTTLS)
-- **Verify SSL/TLS certificate**: ✅ **Checked** (certificate is trusted)
-- **Username**: `cn=readonly,dc=passbolt,dc=local`
-- **Password**: `readonly`
-- **Domain**: `passbolt.local`
-- **Base DN**: `dc=passbolt,dc=local`
-
-> **Note**: The readonly user is automatically created by the LDAP container and has read-only access to the directory, which is the recommended approach for Passbolt directory synchronization. Passbolt directory sync is **one-way read-only** - it reads user and group data from LDAP but does not write back to LDAP.
+> Note: The readonly user is automatically created by the LDAP container and has read-only access to the directory, which is the recommended approach for Passbolt directory synchronization. Passbolt directory sync is one-way read-only - it reads user and group data from LDAP but does not write back to LDAP.
 
 #### Directory Settings
-- **Users Path**: `ou=users`
-- **Group Path**: `ou=groups`
-- **User Filter**: `(objectClass=inetOrgPerson)`
-- **Group Filter**: `(objectClass=groupOfUniqueNames)`
+- Users Path: `ou=users`
+- Group Path: `ou=groups`
+- User Filter: `(objectClass=inetOrgPerson)`
+- Group Filter: `(objectClass=groupOfUniqueNames)`
 
 #### Attributes
-- **Username**: `mail`
-- **Group**: `cn`
-- **First Name**: `givenName`
-- **Last Name**: `sn`
-- **Email**: `mail`
+- Username: `mail`
+- Group: `cn`
+- First Name: `givenName`
+- Last Name: `sn`
+- Email: `mail`
 
 #### SSL Configuration
-- **SSL Verification**: `Enabled`
-- **CA Certificate**: Built into container (automatically configured)
-- **Allow Self-Signed**: `Enabled`
+- SSL Verification: Enabled
+- CA Certificate: Built into container (automatically configured)
+- Allow Self-Signed: Enabled
 
-> **Note**: The LDAP server's certificate is automatically downloaded and built into the Passbolt container during setup, allowing Passbolt to verify the LDAP connection securely.
+> Note: The LDAP server's certificate is automatically downloaded and built into the Passbolt container during setup, allowing Passbolt to verify the LDAP connection securely.
 
-> **Important**: The LDAP admin user `cn=admin,dc=passbolt,dc=local` is automatically created during the setup process for administrative operations. For Passbolt directory synchronization, use the readonly user `cn=readonly,dc=passbolt,dc=local` which is also automatically created by the LDAP container.
+> Important: The LDAP admin user `cn=admin,dc=passbolt,dc=local` is automatically created during the setup process for administrative operations. For Passbolt directory synchronization, use the readonly user `cn=readonly,dc=passbolt,dc=local` which is also automatically created by the LDAP container.
 
 ### Directory Synchronization
-**One-way read-only** from LDAP to Passbolt. LDAP serves as the source of truth for user identity and group membership. Passbolt reads user/group data during sync but never writes back to LDAP.
+One-way read-only from LDAP to Passbolt. LDAP serves as the source of truth for user identity and group membership. Passbolt reads user/group data during sync but never writes back to LDAP.
 
 ## Keycloak SSO Configuration
 
@@ -393,31 +370,21 @@ Configure in Passbolt web interface under Administration → Authentication → 
 
 ### Screenshots
 
-**Keycloak Client Configuration**
-
-<img src="./assets/keycloak_client.png" alt="Keycloak Client Configuration" width="600">
-
-**Keycloak User Setup**
-
-<img src="./assets/keycloak_user.png" alt="Keycloak User Setup" width="600">
-
-**Passbolt SSO Configuration**
-
-<img src="./assets/passbolt_config.png" alt="Passbolt SSO Configuration" width="600">
-
-**Passbolt OIDC Login**
-
-<img src="./assets/passbolt_oidc_login.png" alt="Passbolt OIDC Login" width="600">
+See `assets/` directory for configuration screenshots:
+- Keycloak client configuration
+- Keycloak user setup  
+- Passbolt SSO configuration
+- Passbolt OIDC login
 
 ## SMTP Configuration
 
 ### Services Overview
 
-- **SMTP4Dev**: http://smtp.local:5050 (port 465, implicit TLS)
+- SMTP4Dev: http://smtp.local:5050 (port 465, SMTPS (implicit TLS))
 
 ### Current Configuration
 
-Passbolt configured to use SMTP4Dev with TLS:
+Passbolt configured to use SMTP4Dev with SMTPS (implicit TLS):
 
 ```yaml
 EMAIL_TRANSPORT_DEFAULT_HOST: "ssl://smtp.local"
@@ -458,7 +425,7 @@ openssl pkcs12 -export \
 
 ### Adding Users
 
-#### Quick Setup: Add a Single User
+#### Add a Single User
 ```bash
 ./scripts/ldap/users/add.sh "Firstname" "Lastname" "username@passbolt.com"
 
@@ -545,16 +512,6 @@ Before testing user removal, ensure Passbolt is configured to suspend users rath
 # Run manual sync in Passbolt to reactivate the user
 ```
 
-#### Reset Groups to Initial State
-```bash
-./scripts/ldap/setup/reset-groups.sh
-```
-
-#### Database User Restoration
-```bash
-./scripts/ldap/ldap-restore-user.sh <username> <database> <mysql_user> <mysql_password>
-```
-
 ## Testing and Verification
 
 ### LDAPS Connectivity Test
@@ -612,28 +569,27 @@ docker compose logs ldap
 #### Certificate Verification Failures
 **Symptoms**: `verify error:num=19:self-signed certificate in certificate chain` or "Can't contact LDAP server"
 
-**Root Cause**: The LDAP server uses its own self-signed certificate issued by `docker-light-baseimage`, but the certificate bundle contains the wrong CA certificate.
+**Root Cause**: The LDAP server uses its own self-signed certificate issued by `docker-light-baseimage`, but the certificate bundle is missing the CA certificate or contains incorrect certificates.
 
 **Solutions**:
-1. **Verify the certificate bundle contains the correct CA:**
+1. **Verify the certificate bundle contains both server and CA certificates:**
    ```bash
-   openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 5 -B 5 "Subject:"
-   # Should show: Subject: CN=docker-light-baseimage
+   # Check certificate count (should be 2)
+   grep -c "BEGIN CERTIFICATE" certs/ldaps_bundle.crt
+   
+   # Check server certificate subject
+   openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 2 -B 2 "Subject:" | head -3
+   # Should show: Subject: CN=ldap.local
    ```
 
-2. **If the CA is wrong, fix it:**
+2. **If the bundle is incorrect, regenerate it:**
    ```bash
-   # Get the actual certificate chain from LDAP server
-echo "" | openssl s_client -connect ldap.local:636 -servername ldap.local -showcerts 2>/dev/null | awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' > certs/ldap_server_chain.crt
+   # Run the certificate fix script (extracts from container)
+   ./scripts/fix-ldaps-certificates.sh
    
-   # Extract the CA certificate (second certificate in chain)
-   awk 'split_after==1{n++;split_after=0} /-----END CERTIFICATE-----/ {split_after=1} {print > ("certs/cert" n ".crt")}' certs/ldap_server_chain.crt
-   
-   # Copy the CA certificate to the bundle
-   cp certs/cert1.crt certs/ldaps_bundle.crt
-   
-   # Restart Passbolt
-   docker compose restart passbolt
+   # Rebuild Passbolt container to pick up new bundle
+   docker compose build passbolt
+   docker compose up -d passbolt
    ```
 
 3. **Verify the certificate SAN matches:**
@@ -650,11 +606,12 @@ echo "" | openssl s_client -connect ldap.local:636 -servername ldap.local -showc
 # Step 2: Deploy certificates to LDAP container (optional - for custom certificates)
 ./scripts/setup-ldap-certs.sh
 
-# Step 3: Fix LDAPS bundle for Passbolt (automatic in setup.sh)
+# Step 3: Fix LDAPS bundle for Passbolt (extracts from container)
 ./scripts/fix-ldaps-certificates.sh
 
-# Step 4: Restart services to pick up new certificates
-docker compose down && docker compose up -d
+# Step 4: Rebuild Passbolt container to pick up new certificate bundle
+docker compose build passbolt
+docker compose up -d passbolt
 ```
 
 #### Verify Certificate Chain
@@ -840,20 +797,35 @@ chmod 644 smtp4dev/certs/tls.pfx
 3. **Regenerate certificate bundle if needed:**
    ```bash
    ./scripts/fix-ldaps-certificates.sh
-   docker compose restart passbolt
+   docker compose build passbolt
+   docker compose up -d passbolt
    ```
+
+#### LDAP Connection Issues
+**Symptoms**: Passbolt cannot connect to LDAP server
+
+**Solutions**:
+- Verify LDAP server is running with TLS enabled
+- Check that custom certificates are properly deployed
+- Ensure network connectivity between containers
+
+```bash
+docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
+  -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
+  -b "dc=passbolt,dc=local" "(objectClass=*)"
+```
 
 #### STARTTLS vs LDAPS Configuration
 **Symptoms**: STARTTLS works externally but not from Passbolt container
 
 **Root Cause**: This is expected behavior. The osixia/openldap image supports both:
-- **LDAPS (port 636)**: Implicit SSL/TLS - used by Passbolt
-- **STARTTLS (port 389)**: Explicit TLS upgrade - available for external clients
+- LDAPS (implicit TLS) on port 636 - used by Passbolt
+- LDAP with STARTTLS (explicit TLS upgrade) on port 389 - alternative for Passbolt
 
 **Solutions**:
-- **For Passbolt**: Use LDAPS on port 636 (current configuration)
-- **For external clients**: Use STARTTLS on port 389
-- **Both methods work** with the same certificate configuration
+- For Passbolt: Use LDAPS on port 636 (current configuration)
+- For alternative: Use LDAP with STARTTLS on port 389
+- Both methods work with the same certificate configuration
 
 #### Verify Certificate Files Exist
 ```bash
@@ -887,89 +859,21 @@ docker compose exec ldap ldapsearch -x -H ldap://localhost:389 \
 
 ## Repository Structure
 
-```
-passbolt-docker-pro/
-├── docker-compose.yaml              # Main Docker Compose configuration (uses osixia/openldap:1.5.0)
-├── Dockerfile.passbolt              # Custom Passbolt Docker image
-├── .env                             # Environment variables for Docker component naming
-├── .gitignore                       # Git ignore rules
-├── scripts/                         # Utility scripts
-│   ├── ldap/                        # LDAP management scripts
-│   │   ├── users/                   # User management
-│   │   │   ├── add.sh              # Add new users
-│   │   │   └── remove.sh           # Remove users
-│   │   ├── groups/                  # Group management
-│   │   │   ├── add.sh              # Add groups
-│   │   │   ├── remove.sh           # Remove groups
-│   │   │   ├── add-user.sh         # Add user to group
-│   │   │   └── remove-user.sh      # Remove user from group
-│   │   ├── setup/                   # Setup scripts
-│   │   │   ├── initial-setup.sh    # Initial LDAP setup
-│   │   │   ├── create-admin.sh     # Create admin user
-│   │   │   ├── admin_user.ldif     # LDAP admin user definition
-│   │   │   └── reset-groups.sh     # Reset groups to initial state
-│   │   ├── add-edith.sh            # Quick Edith setup
-│   │   └── ldap-restore-user.sh    # Database user restoration
-│   ├── tests/                       # Test scripts
-│   │   ├── integration/            # Integration tests
-│   │   │   └── test-ldap.sh        # LDAP integration tests
-│   │   ├── sync/                   # Sync tests
-│   │   │   └── test-sync.sh        # Sync testing
-│   │   └── scripts/                # Script testing
-│   │       └── test-scripts.sh     # Script testing
-│   ├── generate-certificates.sh     # Certificate generation
-│   ├── generate-smtp-certs.sh      # SMTP certificate generation
-│   ├── setup-ldap-certs.sh         # LDAP certificate setup
-│   ├── fix-ldaps-certificates.sh   # Fix LDAPS certificate bundle for Passbolt
-│   ├── setup-ldap-data.sh          # LDAP data setup
-│   ├── setup-ldap-users.sh         # LDAP users setup
-│   ├── generate-ldaps-certs.sh     # LDAPS bundle generation (legacy)
-│   ├── ldap-entrypoint.sh          # LDAP container entrypoint
-│   └── setup.sh                    # Automated setup
-├── certs/                           # Certificate files
-│   └── ldaps_bundle.crt            # LDAPS certificate bundle (contains CA certificate for LDAP server verification)
-├── ldap-certs/                      # LDAP certificates
-│   ├── ldap.crt                    # LDAP server certificate
-│   ├── ldap.key                    # LDAP private key
-│   ├── ldap-chain.crt              # LDAP certificate chain
-│   ├── ldap.csr                    # LDAP certificate signing request
-│   └── ldap_ssl_config.txt         # LDAP SSL configuration
-├── keys/                           # Root CA and other certificates
-│   ├── ca.crt                      # Root CA certificate
-│   ├── keycloak.crt                # Keycloak certificate
-│   ├── keycloak.key                # Keycloak private key
-│   ├── keycloak-chain.crt          # Keycloak certificate chain
-│   ├── keycloak.csr                # Keycloak certificate signing request
-│   └── keycloak_ssl_config.txt     # Keycloak SSL configuration
-├── smtp4dev/                       # SMTP4Dev service and certificates
-│   └── certs/                      # SMTP TLS certificates
-│       ├── tls.crt                 # SMTP server certificate
-│       ├── tls.key                 # SMTP private key
-│       └── tls.pfx                 # SMTP certificate bundle
-├── config/                         # Configuration files
-│   ├── ldap/                       # LDAP configuration
-│   │   └── avatars/                # User avatar images
-│   ├── php/                        # PHP configuration
-│   │   ├── php.ini                 # PHP settings
-│   │   ├── ssl.ini                 # PHP SSL settings
-│   │   └── www.conf                # PHP-FPM configuration
-│   ├── ssl/                        # SSL configuration templates
-│   │   ├── keycloak_ssl_config.txt # Keycloak SSL config template
-│   │   └── ldap_ssl_config.txt     # LDAP SSL config template
-│   └── db/                         # Database configuration
-│       └── init-keycloak-db.sql    # Keycloak database initialization
-├── assets/                         # Documentation screenshots
-└── README.md                       # This file
-```
+Key directories:
+- `scripts/` - Setup and management scripts
+- `certs/` - Certificate files (LDAPS bundle, SMTP certificates)
+- `config/` - Configuration files (PHP, SSL, database)
+- `assets/` - Documentation screenshots
+- `docker-compose.yaml` - Main configuration
 
 ## Use Cases
 
 This example repository is useful for:
 
-- **Learning**: Understanding Passbolt Pro SSO and LDAPS integration
-- **Testing**: Validating configurations before production deployment
-- **Development**: Local development environment for Passbolt integrations
-- **Demonstration**: Showing integration capabilities
+- Learning: Understanding Passbolt Pro SSO and LDAPS integration
+- Testing: Validating configurations before production deployment
+- Development: Local development environment for Passbolt integrations
+- Demonstration: Showing integration capabilities
 
 ## Contributing
 
