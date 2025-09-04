@@ -106,7 +106,7 @@ This script will:
 | Passbolt  | https://passbolt.local    | Created during setup | Main application |
 | Keycloak  | https://keycloak.local:8443 | admin / admin    | SSO provider |
 | SMTP4Dev  | http://smtp.local:5050    | N/A               | Email testing |
-| LDAP      | ldap.local:636 (LDAPS)    | cn=readonly,dc=passbolt,dc=local / readonly | User directory (read-only sync) |
+| LDAP      | ldap.local:389 (STARTTLS) | cn=readonly,dc=passbolt,dc=local / readonly | User directory (read-only sync) |
 
 ## LDAP Configuration
 
@@ -114,17 +114,17 @@ This script will:
 
 The setup supports two LDAP connection methods:
 
-#### Default: LDAPS (Implicit SSL) - Currently Working
-- **Port**: 636  
-- **Method**: LDAPS (implicit SSL/TLS)
+#### Default: LDAP with STARTTLS (Currently Working)
+- **Port**: 389
+- **Method**: STARTTLS (explicit TLS upgrade)
 - **Compatibility**: Works reliably with current LDAP server configuration
 - **Setup**: Automatic via `./scripts/setup.sh`
 
-#### Alternative: LDAP with STARTTLS (Not Currently Working)
-- **Port**: 389
-- **Method**: STARTTLS (explicit TLS upgrade)
-- **Compatibility**: LDAP server requires TLS for all connections
-- **Setup**: Requires LDAP server configuration changes
+#### Alternative: LDAPS (Implicit SSL)
+- **Port**: 636  
+- **Method**: LDAPS (implicit SSL/TLS)
+- **Compatibility**: Also works with current LDAP server configuration
+- **Setup**: Change docker-compose.yaml and rebuild container
 
 ### Certificate Management
 
@@ -137,15 +137,15 @@ The setup uses a streamlined certificate process that **downloads certificates f
    - Built into Passbolt container during build process
    - **Called automatically by `setup.sh`**
 
-### Switching to STARTTLS (Alternative Configuration)
+### Switching to LDAPS (Alternative Configuration)
 
-To use STARTTLS instead of LDAPS, edit `docker-compose.yaml`:
+To use LDAPS instead of STARTTLS, edit `docker-compose.yaml`:
 
 ```yaml
 # Change these lines in the passbolt service environment:
-PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_PORT: "389"
-PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_SSL: "false"
-PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_TLS: "true"
+PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_PORT: "636"
+PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_SSL: "true"
+PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_TLS: "false"
 ```
 
 Then rebuild the container:
@@ -154,7 +154,7 @@ docker compose build passbolt
 docker compose up -d passbolt
 ```
 
-**Note**: STARTTLS requires the LDAP server to be configured to allow plain connections on port 389, which is not currently the case. The LDAP server is configured to require TLS for all connections.
+**Note**: Both STARTTLS and LDAPS work with the current LDAP server configuration. STARTTLS is set as the default for better PHP LDAP extension compatibility.
 
 ### Certificate System Overview
 
@@ -185,24 +185,24 @@ dc=passbolt,dc=local
 
 Configure in Passbolt web interface under Organization Settings > Directory:
 
-#### Server Configuration (LDAPS - Default)
-- **Host**: `ldap.local`
-- **Port**: `636`
-- **Use SSL**: ✅ **Checked** (implicit SSL/TLS)
-- **Use TLS**: ❌ **Unchecked**
-- **Verify SSL/TLS certificate**: ✅ **Checked** (certificate is trusted)
-- **Username**: `cn=readonly,dc=passbolt,dc=local`
-- **Password**: `readonly`
-- **Domain**: `passbolt.local`
-- **Base DN**: `dc=passbolt,dc=local`
-
-#### Server Configuration (STARTTLS - Alternative)
+#### Server Configuration (STARTTLS - Default)
 - **Host**: `ldap.local`
 - **Port**: `389`
 - **Use SSL**: ❌ **Unchecked** (we're using STARTTLS, not SSL)
 - **Use TLS**: ✅ **Checked** (this enables STARTTLS)
 - **Verify SSL/TLS certificate**: ✅ **Checked** (certificate is trusted)
 - **Username**: `cn=readonly,dc=passbolt,dc=local` (recommended for security)
+- **Password**: `readonly`
+- **Domain**: `passbolt.local`
+- **Base DN**: `dc=passbolt,dc=local`
+
+#### Server Configuration (LDAPS - Alternative)
+- **Host**: `ldap.local`
+- **Port**: `636`
+- **Use SSL**: ✅ **Checked** (implicit SSL/TLS)
+- **Use TLS**: ❌ **Unchecked**
+- **Verify SSL/TLS certificate**: ✅ **Checked** (certificate is trusted)
+- **Username**: `cn=readonly,dc=passbolt,dc=local`
 - **Password**: `readonly`
 - **Domain**: `passbolt.local`
 - **Base DN**: `dc=passbolt,dc=local`

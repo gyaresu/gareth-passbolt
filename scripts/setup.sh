@@ -53,7 +53,7 @@ else
     echo "All SMTP certificate files found"
 fi
 
-echo "Note: Using LDAP with STARTTLS (port 389) - more compatible with PHP LDAP extension"
+echo "Note: Using LDAP with STARTTLS (port 389) - currently working and tested"
 echo "LDAP certificates will be downloaded from the LDAP server and built into the container"
 
 # Start the services
