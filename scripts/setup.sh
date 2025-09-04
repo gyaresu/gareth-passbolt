@@ -32,28 +32,29 @@ if [ ! -L "subscription_key.txt" ]; then
     fi
 fi
 
-# Check if certificate files exist
-echo "Checking certificate files..."
+# Check if SMTP certificate files exist and generate them if missing
+echo "Checking SMTP certificate files..."
 missing_certs=()
 
-if [ ! -f "certs/ldaps_bundle.crt" ]; then missing_certs+=("certs/ldaps_bundle.crt"); fi
+# Only check for SMTP certificates - LDAP certificates are downloaded from the server
 if [ ! -f "smtp4dev/certs/tls.crt" ]; then missing_certs+=("smtp4dev/certs/tls.crt"); fi
 if [ ! -f "smtp4dev/certs/tls.pfx" ]; then missing_certs+=("smtp4dev/certs/tls.pfx"); fi
-if [ ! -f "ldap-certs/ldap.crt" ]; then missing_certs+=("ldap-certs/ldap.crt"); fi
-if [ ! -f "ldap-certs/ldap.key" ]; then missing_certs+=("ldap-certs/ldap.key"); fi
-if [ ! -f "ldap-certs/ca.crt" ]; then missing_certs+=("ldap-certs/ca.crt"); fi
 
 if [ ${#missing_certs[@]} -ne 0 ]; then
-    echo "Error: Missing certificate files:"
+    echo "Missing SMTP certificate files detected:"
     for cert in "${missing_certs[@]}"; do
         echo "   - $cert"
     done
     echo ""
-    echo "Please ensure all certificate files are present before continuing."
-    exit 1
+    echo "Generating SMTP certificates..."
+    ./scripts/generate-smtp-certs.sh
+    echo "SMTP certificate generation complete!"
+else
+    echo "All SMTP certificate files found"
 fi
 
-echo "All certificate files found"
+echo "Note: Using LDAP with STARTTLS (port 389) - more compatible with PHP LDAP extension"
+echo "LDAP certificates will be downloaded from the LDAP server and built into the container"
 
 # Start the services
 echo "Starting Docker services..."
@@ -63,8 +64,8 @@ docker compose up -d
 echo "Waiting for services to start..."
 sleep 10
 
-# Fix LDAPS certificate bundle
-echo "Fixing LDAPS certificate bundle..."
+# Download LDAP server certificate
+echo "Downloading LDAP server certificate..."
 ./scripts/fix-ldaps-certificates.sh
 
 # Restart Passbolt to pick up the new certificate
@@ -74,6 +75,10 @@ docker compose restart passbolt
 # Wait for Passbolt to be ready
 echo "Waiting for Passbolt to be ready..."
 sleep 15
+
+# Set up LDAP users and groups
+echo "Setting up LDAP users and groups..."
+./scripts/ldap/setup/initial-setup.sh
 
 # Create admin user if it doesn't exist
 echo "Creating Passbolt admin user..."
@@ -95,8 +100,16 @@ if docker compose ps | grep -q "Up"; then
 echo "   - Passbolt: https://passbolt.local"
 echo "   - Keycloak: https://keycloak.local:8443"
 echo "   - SMTP4Dev (SMTP testing): http://smtp.local:5050"
-echo "   - LDAP: ldap.local:389 (LDAP), ldap.local:636 (LDAPS)"
+echo "   - LDAP: ldap.local:389 (STARTTLS), ldap.local:636 (LDAPS)"
     echo ""
+    echo "LDAP users created for sync:"
+    echo "   - ada@passbolt.com (admin)"
+    echo "   - betty@passbolt.com"
+    echo "   - carol@passbolt.com"
+    echo "   - dame@passbolt.com"
+    echo "   - edith@passbolt.com"
+    echo ""
+    echo "Configure LDAP directory sync in Passbolt web UI to sync these users."
     echo "For more information, see README.md"
 else
     echo "Error: Some services failed to start. Check logs with:"

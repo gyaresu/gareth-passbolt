@@ -17,11 +17,11 @@ fi
 
 # Wait for LDAP to be ready
 echo "Waiting for LDAP server to be ready..."
-sleep 10
+sleep 30
 
-# Get the actual certificate chain from the LDAP server
-echo "Extracting certificate chain from LDAP server..."
-echo "" | openssl s_client -connect localhost:636 -servername ldap.local -showcerts 2>/dev/null | \
+# Get the actual certificate from the LDAP server using LDAPS
+echo "Extracting certificate from LDAP server using LDAPS..."
+echo "" | openssl s_client -connect ldap.local:636 -servername ldap.local -showcerts 2>/dev/null | \
   awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' > certs/ldap_server_chain.crt
 
 # Check if we got certificates
@@ -31,28 +31,25 @@ if [ ! -s "certs/ldap_server_chain.crt" ]; then
     exit 1
 fi
 
-# Extract the CA certificate (second certificate in the chain)
-echo "Extracting CA certificate..."
-awk 'split_after==1{n++;split_after=0} /-----END CERTIFICATE-----/ {split_after=1} {print > ("certs/cert" n ".crt")}' certs/ldap_server_chain.crt
-
-# Copy the CA certificate to the bundle
+# Copy the certificate to the bundle (for STARTTLS, we use the server certificate directly)
 echo "Updating certificate bundle..."
-cp certs/cert1.crt certs/ldaps_bundle.crt
+cp certs/ldap_server_chain.crt certs/ldap-local.crt
+cp certs/ldap-local.crt certs/ldaps_bundle.crt
 
 # Clean up temporary files
 rm -f certs/ldap_server_chain.crt certs/cert*.crt
 
 # Verify the certificate bundle
 echo "Verifying certificate bundle..."
-CA_SUBJECT=$(openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 5 -B 5 "Subject:" | grep "Subject:")
+CERT_SUBJECT=$(openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 5 -B 5 "Subject:" | grep "Subject:")
 
-if echo "$CA_SUBJECT" | grep -q "docker-light-baseimage"; then
+if echo "$CERT_SUBJECT" | grep -q "ldap.local"; then
     echo "✅ Certificate bundle updated successfully"
-    echo "CA Certificate: $CA_SUBJECT"
+    echo "LDAP Certificate: $CERT_SUBJECT"
 else
-    echo "❌ Error: Certificate bundle does not contain the correct CA certificate"
-    echo "Expected: Subject: CN=docker-light-baseimage"
-    echo "Found: $CA_SUBJECT"
+    echo "❌ Error: Certificate bundle does not contain the correct LDAP certificate"
+    echo "Expected: Subject containing ldap.local"
+    echo "Found: $CERT_SUBJECT"
     exit 1
 fi
 
