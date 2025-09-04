@@ -106,25 +106,81 @@ This script will:
 | Passbolt  | https://passbolt.local    | Created during setup | Main application |
 | Keycloak  | https://keycloak.local:8443 | admin / admin    | SSO provider |
 | SMTP4Dev  | http://smtp.local:5050    | N/A               | Email testing |
-| LDAP      | ldap.local:389 (STARTTLS) | cn=readonly,dc=passbolt,dc=local / readonly | User directory (read-only sync) |
+| LDAP      | ldap.local:636 (LDAPS)   | cn=readonly,dc=passbolt,dc=local / readonly | User directory (read-only sync) |
+| LDAP      | ldap.local:389 (STARTTLS) | cn=admin,dc=passbolt,dc=local / P4ssb0lt | User directory (admin access) |
 
 ## LDAP Configuration
+
+### osixia/openldap Docker Image
+
+This setup uses the **osixia/openldap:1.5.0** Docker image, which provides a fully configured OpenLDAP server with TLS support. The image is based on osixia/light-baseimage and includes automatic certificate generation and LDAP configuration.
+
+### LDAP Server Environment Variables
+
+The LDAP container is configured with the following environment variables:
+
+```yaml
+# Basic LDAP Configuration
+LDAP_ORGANISATION: "Passbolt"
+LDAP_DOMAIN: "passbolt.local"
+LDAP_BASE_DN: "dc=passbolt,dc=local"
+LDAP_ADMIN_PASSWORD: "P4ssb0lt"
+LDAP_CONFIG_PASSWORD: "P4ssb0lt"
+
+# TLS Configuration
+LDAP_TLS: "true"                    # Enables TLS capabilities (both LDAPS and STARTTLS)
+LDAP_TLS_VERIFY_CLIENT: "never"     # Allows unverified client certificates
+
+# Readonly User (for Passbolt directory sync)
+LDAP_READONLY_USER: "true"
+LDAP_READONLY_USER_USERNAME: "readonly"
+LDAP_READONLY_USER_PASSWORD: "readonly"
+
+# User and Group Structure
+LDAP_USERS_DN: "ou=users,dc=passbolt,dc=local"
+LDAP_GROUPS_DN: "ou=groups,dc=passbolt,dc=local"
+```
 
 ### LDAP Connection Options
 
 The setup supports two LDAP connection methods:
 
-#### Default: LDAP with STARTTLS (Currently Working)
+#### Default: LDAPS (Port 636) - Currently Used by Passbolt
+- **Port**: 636
+- **Method**: LDAPS (implicit SSL/TLS)
+- **Compatibility**: Works reliably with Passbolt PHP LDAP extension
+- **Setup**: Automatic via `./scripts/setup.sh`
+- **Certificate**: Uses server's self-signed certificate with CA bundle
+
+#### Alternative: STARTTLS (Port 389) - Available for External Clients
 - **Port**: 389
 - **Method**: STARTTLS (explicit TLS upgrade)
-- **Compatibility**: Works reliably with current LDAP server configuration
-- **Setup**: Automatic via `./scripts/setup.sh`
+- **Compatibility**: Works for external LDAP clients
+- **Setup**: Automatic via `LDAP_TLS=true` environment variable
+- **Certificate**: Same certificate as LDAPS
 
-#### Alternative: LDAPS (Implicit SSL)
-- **Port**: 636  
-- **Method**: LDAPS (implicit SSL/TLS)
-- **Compatibility**: Also works with current LDAP server configuration
-- **Setup**: Change docker-compose.yaml and rebuild container
+### osixia/openldap Features
+
+The osixia/openldap image provides several key features:
+
+#### Automatic Certificate Generation
+- **Self-signed certificates**: Generated automatically using the container hostname
+- **Certificate location**: `/container/service/slapd/assets/certs/`
+- **Files created**:
+  - `ldap.crt` - Server certificate
+  - `ldap.key` - Private key
+  - `ca.crt` - CA certificate (docker-light-baseimage)
+  - `dhparam.pem` - DH parameters
+
+#### TLS Configuration
+- **LDAP_TLS=true**: Enables both LDAPS (port 636) and STARTTLS (port 389)
+- **LDAP_TLS_VERIFY_CLIENT=never**: Allows unverified client certificates
+- **Automatic TLS setup**: No manual certificate configuration required
+
+#### User Management
+- **Admin user**: `cn=admin,dc=passbolt,dc=local` with password `P4ssb0lt`
+- **Readonly user**: `cn=readonly,dc=passbolt,dc=local` with password `readonly`
+- **Automatic user creation**: Users and groups created via bootstrap LDIF files
 
 ### Certificate Management
 
@@ -185,22 +241,22 @@ dc=passbolt,dc=local
 
 Configure in Passbolt web interface under Organization Settings > Directory:
 
-#### Server Configuration (STARTTLS - Default)
+#### Server Configuration (LDAPS - Current Default)
 - **Host**: `ldap.local`
-- **Port**: `389`
-- **Use SSL**: ❌ **Unchecked** (we're using STARTTLS, not SSL)
-- **Use TLS**: ✅ **Checked** (this enables STARTTLS)
+- **Port**: `636`
+- **Use SSL**: ✅ **Checked** (implicit SSL/TLS)
+- **Use TLS**: ❌ **Unchecked**
 - **Verify SSL/TLS certificate**: ✅ **Checked** (certificate is trusted)
 - **Username**: `cn=readonly,dc=passbolt,dc=local` (recommended for security)
 - **Password**: `readonly`
 - **Domain**: `passbolt.local`
 - **Base DN**: `dc=passbolt,dc=local`
 
-#### Server Configuration (LDAPS - Alternative)
+#### Server Configuration (STARTTLS - Alternative)
 - **Host**: `ldap.local`
-- **Port**: `636`
-- **Use SSL**: ✅ **Checked** (implicit SSL/TLS)
-- **Use TLS**: ❌ **Unchecked**
+- **Port**: `389`
+- **Use SSL**: ❌ **Unchecked** (we're using STARTTLS, not SSL)
+- **Use TLS**: ✅ **Checked** (this enables STARTTLS)
 - **Verify SSL/TLS certificate**: ✅ **Checked** (certificate is trusted)
 - **Username**: `cn=readonly,dc=passbolt,dc=local`
 - **Password**: `readonly`
@@ -726,30 +782,78 @@ chmod 600 keys/*.key smtp4dev/certs/*.key
 chmod 644 smtp4dev/certs/tls.pfx
 ```
 
-### LDAP Container Configuration Issues
+### osixia/openldap Specific Issues
+
+#### LDAP Container Configuration Issues
 **Symptoms**: LDAPS connection fails after modifying docker-compose.yaml
 
 **Root Cause**: Adding incorrect environment variables to the osixia/openldap container can break its internal certificate management.
 
 **Solutions**:
-1. **Remove any custom LDAP_TLS_* environment variables** that are not documented in the osixia/openldap documentation
-2. **Use only the standard environment variables:**
+1. **Use only documented environment variables** from the osixia/openldap documentation:
    ```yaml
+   # Basic Configuration
+   LDAP_ORGANISATION: "Passbolt"
+   LDAP_DOMAIN: "passbolt.local"
+   LDAP_BASE_DN: "dc=passbolt,dc=local"
+   LDAP_ADMIN_PASSWORD: "P4ssb0lt"
+   LDAP_CONFIG_PASSWORD: "P4ssb0lt"
+   
+   # TLS Configuration
    LDAP_TLS: "true"
    LDAP_TLS_VERIFY_CLIENT: "never"
-   LDAP_TLS_CIPHER_SUITE: "SECURE256"
-   LDAP_TLS_PROTOCOL_MIN: "3.1"
-   LDAP_TLS_CERT_FILE: "/container/service/slapd/assets/certs/ldap.crt"
-   LDAP_TLS_KEY_FILE: "/container/service/slapd/assets/certs/ldap.key"
-   LDAP_TLS_CA_CERT_FILE: "/container/service/slapd/assets/certs/ca.crt"
-   LDAP_TLS_ENFORCE: "true"
-   LDAP_TLS_ENFORCE_CLIENT: "false"
+   
+   # Readonly User
+   LDAP_READONLY_USER: "true"
+   LDAP_READONLY_USER_USERNAME: "readonly"
+   LDAP_READONLY_USER_PASSWORD: "readonly"
    ```
 
-3. **Restart the LDAP container after removing incorrect variables:**
+2. **Avoid custom LDAP_TLS_* variables** that are not in the official documentation
+3. **Restart the LDAP container after changes:**
    ```bash
    docker compose restart ldap
    ```
+
+#### Certificate Issues with osixia/openldap
+**Symptoms**: "Can't contact LDAP server" or certificate verification failures
+
+**Root Cause**: The osixia/openldap image generates its own self-signed certificates using the `docker-light-baseimage` CA.
+
+**Solutions**:
+1. **Verify the certificate chain:**
+   ```bash
+   # Check LDAP server certificate
+   docker compose exec ldap openssl x509 -in /container/service/slapd/assets/certs/ldap.crt -text -noout | grep -A 2 -B 2 "Subject:"
+   
+   # Check CA certificate
+   docker compose exec ldap openssl x509 -in /container/service/slapd/assets/certs/ca.crt -text -noout | grep -A 2 -B 2 "Subject:"
+   ```
+
+2. **Verify certificate bundle in Passbolt:**
+   ```bash
+   # Check the certificate bundle used by Passbolt
+   openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 2 -B 2 "Subject:"
+   # Should show: CN=ldap.local
+   ```
+
+3. **Regenerate certificate bundle if needed:**
+   ```bash
+   ./scripts/fix-ldaps-certificates.sh
+   docker compose restart passbolt
+   ```
+
+#### STARTTLS vs LDAPS Configuration
+**Symptoms**: STARTTLS works externally but not from Passbolt container
+
+**Root Cause**: This is expected behavior. The osixia/openldap image supports both:
+- **LDAPS (port 636)**: Implicit SSL/TLS - used by Passbolt
+- **STARTTLS (port 389)**: Explicit TLS upgrade - available for external clients
+
+**Solutions**:
+- **For Passbolt**: Use LDAPS on port 636 (current configuration)
+- **For external clients**: Use STARTTLS on port 389
+- **Both methods work** with the same certificate configuration
 
 #### Verify Certificate Files Exist
 ```bash
@@ -785,7 +889,7 @@ docker compose exec ldap ldapsearch -x -H ldap://localhost:389 \
 
 ```
 passbolt-docker-pro/
-├── docker-compose.yaml              # Main Docker Compose configuration
+├── docker-compose.yaml              # Main Docker Compose configuration (uses osixia/openldap:1.5.0)
 ├── Dockerfile.passbolt              # Custom Passbolt Docker image
 ├── .env                             # Environment variables for Docker component naming
 ├── .gitignore                       # Git ignore rules

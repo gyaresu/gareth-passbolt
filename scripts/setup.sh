@@ -68,9 +68,10 @@ sleep 10
 echo "Downloading LDAP server certificate..."
 ./scripts/fix-ldaps-certificates.sh
 
-# Restart Passbolt to pick up the new certificate
-echo "Restarting Passbolt to pick up new certificate..."
-docker compose restart passbolt
+# Rebuild and restart Passbolt to pick up the new certificate bundle
+echo "Rebuilding Passbolt container with new certificate bundle..."
+docker compose build passbolt
+docker compose up -d passbolt
 
 # Wait for Passbolt to be ready
 echo "Waiting for Passbolt to be ready..."

@@ -19,37 +19,45 @@ fi
 echo "Waiting for LDAP server to be ready..."
 sleep 30
 
-# Get the actual certificate from the LDAP server using LDAPS
-echo "Extracting certificate from LDAP server using LDAPS..."
-echo "" | openssl s_client -connect ldap.local:636 -servername ldap.local -showcerts 2>/dev/null | \
-  awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' > certs/ldap_server_chain.crt
+# Extract the server certificate from the LDAP container
+echo "Extracting server certificate from LDAP container..."
+docker compose exec ldap cat /container/service/slapd/assets/certs/ldap.crt > certs/ldap_server.crt
+
+# Extract the CA certificate from the LDAP container
+echo "Extracting CA certificate from LDAP container..."
+docker compose exec ldap cat /container/service/slapd/assets/certs/ca.crt > certs/ldap_ca.crt
 
 # Check if we got certificates
-if [ ! -s "certs/ldap_server_chain.crt" ]; then
-    echo "Error: Failed to retrieve LDAP certificates"
+if [ ! -s "certs/ldap_server.crt" ] || [ ! -s "certs/ldap_ca.crt" ]; then
+    echo "Error: Failed to retrieve LDAP certificates from container"
     echo "Make sure the LDAP container is running and accessible"
     exit 1
 fi
 
-# Copy the certificate to the bundle (for STARTTLS, we use the server certificate directly)
-echo "Updating certificate bundle..."
-cp certs/ldap_server_chain.crt certs/ldap-local.crt
-cp certs/ldap-local.crt certs/ldaps_bundle.crt
+# Create the certificate bundle with both server and CA certificates
+echo "Creating certificate bundle with server and CA certificates..."
+cat certs/ldap_server.crt certs/ldap_ca.crt > certs/ldaps_bundle.crt
+
+# Also create the ldap-local.crt for backward compatibility
+cp certs/ldap_server.crt certs/ldap-local.crt
 
 # Clean up temporary files
-rm -f certs/ldap_server_chain.crt certs/cert*.crt
+rm -f certs/ldap_server.crt certs/ldap_ca.crt
 
 # Verify the certificate bundle
 echo "Verifying certificate bundle..."
-CERT_SUBJECT=$(openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 5 -B 5 "Subject:" | grep "Subject:")
+CERT_COUNT=$(grep -c "BEGIN CERTIFICATE" certs/ldaps_bundle.crt)
+SERVER_CERT_SUBJECT=$(openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 2 -B 2 "Subject:" | head -3 | grep "Subject:")
 
-if echo "$CERT_SUBJECT" | grep -q "ldap.local"; then
+if [ "$CERT_COUNT" -eq 2 ] && echo "$SERVER_CERT_SUBJECT" | grep -q "ldap.local"; then
     echo "✅ Certificate bundle updated successfully"
-    echo "LDAP Certificate: $CERT_SUBJECT"
+    echo "Certificate count: $CERT_COUNT (server + CA)"
+    echo "LDAP Server Certificate: $SERVER_CERT_SUBJECT"
+    echo "CA Certificate: CN=docker-light-baseimage"
 else
-    echo "❌ Error: Certificate bundle does not contain the correct LDAP certificate"
-    echo "Expected: Subject containing ldap.local"
-    echo "Found: $CERT_SUBJECT"
+    echo "❌ Error: Certificate bundle is incomplete or incorrect"
+    echo "Expected: 2 certificates (server + CA), server subject containing ldap.local"
+    echo "Found: $CERT_COUNT certificates, server subject: $SERVER_CERT_SUBJECT"
     exit 1
 fi
 
