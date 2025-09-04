@@ -1,6 +1,7 @@
 FROM passbolt/passbolt:latest-pro
 
-# Copy your CA certificate into the appropriate directory
+# Copy your CA certificates into the appropriate directory
 COPY keys/ca.crt /usr/local/share/ca-certificates/keycloak.crt
+COPY certs/ldap-local.crt /usr/local/share/ca-certificates/ldap-local.crt
 # Update the CA trust store
 RUN update-ca-certificates

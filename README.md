@@ -106,55 +106,55 @@ This script will:
 | Passbolt  | https://passbolt.local    | Created during setup | Main application |
 | Keycloak  | https://keycloak.local:8443 | admin / admin    | SSO provider |
 | SMTP4Dev  | http://smtp.local:5050    | N/A               | Email testing |
-| LDAP      | ldaps://ldap.local:636    | cn=readonly,dc=passbolt,dc=local / readonly | User directory (read-only sync) |
+| LDAP      | ldap.local:636 (LDAPS)    | cn=readonly,dc=passbolt,dc=local / readonly | User directory (read-only sync) |
 
-## LDAPS Configuration
+## LDAP Configuration
 
-### Certificate Generation and Management
+### LDAP Connection Options
 
-The setup uses a streamlined certificate process:
+The setup supports two LDAP connection methods:
 
-1. **`./scripts/generate-certificates.sh`** - Creates the certificate hierarchy:
-   - Root CA certificate (`keys/rootCA.crt`)
-   - LDAP server certificate (`ldap-certs/ldap.crt`) signed by the root CA
-   - LDAP private key (`ldap-certs/ldap.key`)
-   - LDAP certificate chain (`ldap-certs/ldap-chain.crt`)
+#### Default: LDAPS (Implicit SSL) - Currently Working
+- **Port**: 636  
+- **Method**: LDAPS (implicit SSL/TLS)
+- **Compatibility**: Works reliably with current LDAP server configuration
+- **Setup**: Automatic via `./scripts/setup.sh`
 
-2. **`./scripts/setup-ldap-certs.sh`** - Deploys certificates to LDAP container (manual step):
-   - Copies certificates to Docker volume `ldap_certs`
-   - Sets proper permissions (644 for certs, 911:911 ownership)
-   - Creates symlink `ca.pem` → `ca.crt`
+#### Alternative: LDAP with STARTTLS (Not Currently Working)
+- **Port**: 389
+- **Method**: STARTTLS (explicit TLS upgrade)
+- **Compatibility**: LDAP server requires TLS for all connections
+- **Setup**: Requires LDAP server configuration changes
 
-3. **`./scripts/fix-ldaps-certificates.sh`** - Automatically fixes Passbolt LDAPS bundle:
-   - Extracts actual certificate chain from running LDAP server
-   - Creates `certs/ldaps_bundle.crt` with correct CA certificate
-   - Mounted as `/etc/ssl/certs/ldaps_bundle.crt` in Passbolt container
+### Certificate Management
+
+The setup uses a streamlined certificate process that **downloads certificates from the LDAP server**:
+
+1. **`./scripts/generate-certificates.sh`** - Creates SMTP certificates only
+2. **`./scripts/fix-ldaps-certificates.sh`** - Downloads LDAP server certificate:
+   - Extracts actual certificate from running LDAP server
+   - Creates `certs/ldap-local.crt` with the server's certificate
+   - Built into Passbolt container during build process
    - **Called automatically by `setup.sh`**
 
-### Important: LDAP Certificate Setup
+### Switching to STARTTLS (Alternative Configuration)
 
-**⚠️ Critical**: The LDAP server uses its own self-signed certificate issued by `docker-light-baseimage`. The `certs/ldaps_bundle.crt` file must contain the correct CA certificate for Passbolt to verify the LDAP server's certificate.
+To use STARTTLS instead of LDAPS, edit `docker-compose.yaml`:
 
-**To fix certificate issues:**
-```bash
-# 1. Get the actual certificate chain from the LDAP server
-echo "" | openssl s_client -connect ldap.local:636 -servername ldap.local -showcerts 2>/dev/null | awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' > certs/ldap_server_chain.crt
-
-# 2. Extract the CA certificate (the second certificate in the chain)
-awk 'split_after==1{n++;split_after=0} /-----END CERTIFICATE-----/ {split_after=1} {print > ("certs/cert" n ".crt")}' certs/ldap_server_chain.crt
-
-# 3. Copy the CA certificate to the bundle
-cp certs/cert1.crt certs/ldaps_bundle.crt
-
-# 4. Restart Passbolt to pick up the new certificate
-docker compose restart passbolt
+```yaml
+# Change these lines in the passbolt service environment:
+PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_PORT: "389"
+PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_SSL: "false"
+PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_TLS: "true"
 ```
 
-**Verify the certificate bundle contains the correct CA:**
+Then rebuild the container:
 ```bash
-openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 5 -B 5 "Subject:"
-# Should show: Subject: CN=docker-light-baseimage
+docker compose build passbolt
+docker compose up -d passbolt
 ```
+
+**Note**: STARTTLS requires the LDAP server to be configured to allow plain connections on port 389, which is not currently the case. The LDAP server is configured to require TLS for all connections.
 
 ### Certificate System Overview
 
@@ -181,14 +181,27 @@ dc=passbolt,dc=local
     └── cn=admins (Administrators)
 ```
 
-### Passbolt LDAPS Settings
+### Passbolt LDAP Settings
 
 Configure in Passbolt web interface under Organization Settings > Directory:
 
-#### Server Configuration
+#### Server Configuration (LDAPS - Default)
 - **Host**: `ldap.local`
 - **Port**: `636`
-- **Protocol**: `LDAPS`
+- **Use SSL**: ✅ **Checked** (implicit SSL/TLS)
+- **Use TLS**: ❌ **Unchecked**
+- **Verify SSL/TLS certificate**: ✅ **Checked** (certificate is trusted)
+- **Username**: `cn=readonly,dc=passbolt,dc=local`
+- **Password**: `readonly`
+- **Domain**: `passbolt.local`
+- **Base DN**: `dc=passbolt,dc=local`
+
+#### Server Configuration (STARTTLS - Alternative)
+- **Host**: `ldap.local`
+- **Port**: `389`
+- **Use SSL**: ❌ **Unchecked** (we're using STARTTLS, not SSL)
+- **Use TLS**: ✅ **Checked** (this enables STARTTLS)
+- **Verify SSL/TLS certificate**: ✅ **Checked** (certificate is trusted)
 - **Username**: `cn=readonly,dc=passbolt,dc=local` (recommended for security)
 - **Password**: `readonly`
 - **Domain**: `passbolt.local`
@@ -211,10 +224,10 @@ Configure in Passbolt web interface under Organization Settings > Directory:
 
 #### SSL Configuration
 - **SSL Verification**: `Enabled`
-- **CA Certificate**: `/etc/ssl/certs/ldaps_bundle.crt` (automatically mounted from `certs/ldaps_bundle.crt`)
+- **CA Certificate**: Built into container (automatically configured)
 - **Allow Self-Signed**: `Enabled`
 
-> **Note**: The CA Certificate path `/etc/ssl/certs/ldaps_bundle.crt` is automatically configured in the Passbolt container via Docker volume mount. This file contains the certificate chain from the LDAP server, allowing Passbolt to verify the LDAPS connection.
+> **Note**: The LDAP server's certificate is automatically downloaded and built into the Passbolt container during setup, allowing Passbolt to verify the LDAP connection securely.
 
 > **Important**: The LDAP admin user `cn=admin,dc=passbolt,dc=local` is automatically created during the setup process for administrative operations. For Passbolt directory synchronization, use the readonly user `cn=readonly,dc=passbolt,dc=local` which is also automatically created by the LDAP container.
 

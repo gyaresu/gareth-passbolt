@@ -98,6 +98,24 @@ services:
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_ENABLED: "true"
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_VERIFY_PEER: "true"
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_CAFILE: "/etc/ssl/certs/ldaps_bundle.crt"
+      # LDAP Connection Settings
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_TYPE: "ldap"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_HOSTNAME: "ldap.local"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_PORT: "636"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_SSL: "true"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_TLS: "false"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USERNAME: "cn=readonly,dc=passbolt,dc=local"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_PASSWORD: "readonly"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_BASE_DN: "dc=passbolt,dc=local"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USERS_PATH: "ou=users"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_GROUPS_PATH: "ou=groups"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USER_FILTER: "(objectClass=inetOrgPerson)"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_GROUP_FILTER: "(objectClass=groupOfUniqueNames)"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USER_ATTRIBUTE_USERNAME: "mail"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USER_ATTRIBUTE_FIRST_NAME: "givenName"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USER_ATTRIBUTE_LAST_NAME: "sn"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USER_ATTRIBUTE_EMAIL: "mail"
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_GROUP_ATTRIBUTE_GROUP_NAME: "cn"
       EMAIL_DEFAULT_FROM: "admin@passbolt.com"
       # SSO configuration for Keycloak
       PASSBOLT_PLUGINS_SSO_ENABLED: "true"
@@ -112,6 +130,7 @@ services:
       - jwt_volume:/etc/passbolt/jwt
       - ./config/php/www.conf:/etc/php-fpm.d/www.conf
       - ./config/php/ssl.ini:/etc/php/8.2/cli/conf.d/99-ssl.ini
+      - ./config/nginx/nginx-passbolt.conf:/etc/nginx/sites-enabled/nginx-passbolt.conf
       - ./keys/ca.crt:/usr/local/share/ca-certificates/keycloak.crt
       - ./smtp4dev/certs/tls.crt:/etc/ssl/certs/smtp_local.crt:ro
       - ./certs/ldaps_bundle.crt:/etc/ssl/certs/ldaps_bundle.crt:ro
@@ -146,13 +165,6 @@ services:
       LDAP_READONLY_USER_PASSWORD: "readonly"
       LDAP_TLS: "true"
       LDAP_TLS_VERIFY_CLIENT: "never"
-      LDAP_TLS_CIPHER_SUITE: "SECURE256"
-      LDAP_TLS_PROTOCOL_MIN: "3.1"
-      LDAP_TLS_CERT_FILE: "/container/service/slapd/assets/certs/ldap.crt"
-      LDAP_TLS_KEY_FILE: "/container/service/slapd/assets/certs/ldap.key"
-      LDAP_TLS_CA_CERT_FILE: "/container/service/slapd/assets/certs/ca.crt"
-      LDAP_TLS_ENFORCE: "true"
-      LDAP_TLS_ENFORCE_CLIENT: "false"
 
       # Initial data setup
       LDAP_BASE_DN: "dc=passbolt,dc=local"
