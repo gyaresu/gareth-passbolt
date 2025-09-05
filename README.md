@@ -1,15 +1,15 @@
 # Passbolt Pro Demonstration Stack
 
-Docker Compose setup for testing Passbolt Pro with SSO integration, LDAPS directory synchronization, and TLS/SSL security.
+Docker Compose setup for testing Passbolt Pro with SSO integration, LDAPS (implicit TLS) directory synchronization, and TLS security.
 
 > Demo Environment: This repository contains demo credentials and self-signed certificates for testing only. Do not use in production without proper security configuration.
 
 ## What This Demonstrates
 
-- Passbolt Pro with OIDC SSO integration (Keycloak over TLS)
-- LDAP over TLS for directory synchronization
-- SMTP over TLS for secure email communication
-- HTTP over TLS for Passbolt and Keycloak web interfaces
+- Passbolt Pro with OIDC SSO integration (Keycloak over HTTPS)
+- LDAPS (implicit TLS) for directory synchronization
+- SMTPS (implicit TLS) for secure email communication
+- HTTPS for Passbolt and Keycloak web interfaces
 - Testing environment with email, database, and user management
 - Certificate automation for development and testing scenarios
 
@@ -61,7 +61,7 @@ This script will:
    cp /path/to/your/subscription_key.txt ./subscription_key.txt
    ```
 
-3. Generate SSL certificates:
+3. Generate TLS certificates:
    ```bash
    ./scripts/generate-certificates.sh
    ```
@@ -107,7 +107,30 @@ This script will:
 | Keycloak  | https://keycloak.local:8443 | admin / admin    | SSO provider |
 | SMTP4Dev  | http://smtp.local:5050    | N/A               | Email testing |
 | LDAP      | ldap.local:636 (LDAPS (implicit TLS))   | cn=readonly,dc=passbolt,dc=local / readonly | User directory (read-only sync) |
-| LDAP      | ldap.local:389 (LDAP with STARTTLS (explicit TLS upgrade)) | cn=admin,dc=passbolt,dc=local / P4ssb0lt | User directory (admin access) |
+| LDAP      | ldap.local:389 (LDAP with STARTTLS) | cn=admin,dc=passbolt,dc=local / P4ssb0lt | User directory (admin access) |
+
+## Environment Variables Configuration
+
+The Docker Compose configuration uses environment variables that are documented in the official Passbolt documentation:
+
+### Core Application Variables
+- `APP_FULL_BASE_URL` - Passbolt application URL
+- `DATASOURCES_DEFAULT_*` - Database connection settings
+
+### Email Configuration
+- `EMAIL_TRANSPORT_DEFAULT_*` - SMTP server settings
+- `EMAIL_DEFAULT_FROM` - Default sender email address
+
+### Plugin Configuration
+- `PASSBOLT_PLUGINS_DIRECTORY_SYNC_ENABLED` - Enable Directory Sync plugin (Note: Currently not working, see task PB-45139 for fix)
+- `PASSBOLT_PLUGINS_SSO_ENABLED` - Enable SSO plugin
+- `PASSBOLT_PLUGINS_SSO_PROVIDER_OAUTH2_ENABLED` - Enable OAuth2 SSO provider
+- `PASSBOLT_SECURITY_SSO_SSL_VERIFY` - SSO SSL verification
+
+### Important Notes
+- **Directory Sync detailed configuration** (host, port, credentials, filters) is done via Passbolt Web UI, not environment variables
+- **PHP TLS configuration** is handled in `config/php/ssl.ini`, not as Passbolt environment variables
+- All environment variables used are documented in the official Passbolt documentation
 
 ## LDAP Configuration
 
@@ -128,7 +151,7 @@ LDAP_ADMIN_PASSWORD: "P4ssb0lt"
 LDAP_CONFIG_PASSWORD: "P4ssb0lt"
 
 # TLS Configuration
-LDAP_TLS: "true"                    # Enables TLS capabilities (both LDAPS (implicit TLS) and LDAP with STARTTLS (explicit TLS upgrade))
+LDAP_TLS: "true"                    # Enables TLS capabilities (both LDAPS (implicit TLS) and LDAP with STARTTLS)
 LDAP_TLS_VERIFY_CLIENT: "never"     # Allows unverified client certificates
 
 # Readonly User (for Passbolt directory sync)
@@ -146,7 +169,7 @@ LDAP_GROUPS_DN: "ou=groups,dc=passbolt,dc=local"
 The setup supports two LDAP connection methods:
 
 - **LDAPS (implicit TLS)**: Port 636 (typically) - Currently used by Passbolt
-- **LDAP with STARTTLS (explicit TLS upgrade)**: Port 389 (typically) - Alternative for Passbolt
+- **LDAP with STARTTLS**: Port 389 (typically) - Another option for Passbolt
 
 Both methods use the same certificate configuration and are automatically enabled via `LDAP_TLS=true`.
 
@@ -165,7 +188,7 @@ The osixia/openldap image provides several key features:
 - Certificate extraction: The `fix-ldaps-certificates.sh` script automatically extracts these certificates from the running container to create the certificate bundle used by Passbolt
 
 #### TLS Configuration
-- LDAP_TLS=true: Enables both LDAPS (implicit TLS) (port 636) and LDAP with STARTTLS (explicit TLS upgrade) (port 389)
+- LDAP_TLS=true: Enables both LDAPS (implicit TLS) (port 636 typically) and LDAP with STARTTLS (port 389 typically)
 - LDAP_TLS_VERIFY_CLIENT=never: Allows unverified client certificates
 - Automatic TLS setup: No manual certificate configuration required
 
@@ -189,21 +212,19 @@ The setup uses a streamlined certificate process that extracts certificates dire
 
 ### Passbolt Configuration
 
-The setup is currently configured to use LDAPS (implicit TLS) on port 636. To switch to LDAP with STARTTLS (explicit TLS upgrade), edit `docker-compose.yaml`:
+The setup is configured with basic Directory Sync settings via environment variables. Detailed LDAP connection settings (host, port, credentials, etc.) are configured through the Passbolt Web UI.
 
+**Environment Variables (docker-compose.yaml):**
 ```yaml
-# Current (LDAPS):
-PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_PORT: "636"
-PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_SSL: "true"
-PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_TLS: "false"
-
-# Alternative (STARTTLS):
-PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_PORT: "389"
-PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_SSL: "false"
-PASSBOLT_PLUGINS_DIRECTORY_SYNC_DIRECTORY_USE_TLS: "true"
+# Directory Sync Plugin (basic settings only - Note: Currently not working, see task PB-45139 for fix)
+PASSBOLT_PLUGINS_DIRECTORY_SYNC_ENABLED: "true"
 ```
 
-Then rebuild: `docker compose build passbolt && docker compose up -d passbolt`
+**Web UI Configuration:**
+- Access Passbolt as administrator
+- Go to Organization Settings > Users Directory
+- Configure LDAP connection details (host, port, credentials, filters, etc.)
+- The setup supports both LDAPS (port 636) and LDAP with STARTTLS (port 389)
 
 ### Certificate System Overview
 
@@ -234,11 +255,11 @@ dc=passbolt,dc=local
 
 Configure in Passbolt web interface under Organization Settings > Directory:
 - Host: `ldap.local`
-- Port: `636` (LDAPS) or `389` (STARTTLS)
+- Port: `636` (LDAPS - implicit TLS) or `389` (LDAP with STARTTLS)
 - Username: `cn=readonly,dc=passbolt,dc=local`
 - Password: `readonly`
 - Base DN: `dc=passbolt,dc=local`
-- Verify SSL/TLS certificate: Checked (certificate bundle is trusted)
+- Verify TLS certificate: Checked (certificate bundle is trusted)
 
 > Note: The readonly user is automatically created by the LDAP container and has read-only access to the directory, which is the recommended approach for Passbolt directory synchronization. Passbolt directory sync is one-way read-only - it reads user and group data from LDAP but does not write back to LDAP.
 
@@ -255,8 +276,8 @@ Configure in Passbolt web interface under Organization Settings > Directory:
 - Last Name: `sn`
 - Email: `mail`
 
-#### SSL Configuration
-- SSL Verification: Enabled
+#### TLS Configuration
+- TLS Verification: Enabled
 - CA Certificate: Built into container (automatically configured)
 - Allow Self-Signed: Enabled
 
@@ -380,27 +401,31 @@ See `assets/` directory for configuration screenshots:
 
 ### Services Overview
 
-- SMTP4Dev: http://smtp.local:5050 (port 465, SMTPS (implicit TLS))
+- SMTP4Dev: http://smtp.local:5050 (port 465 typically, SMTPS (implicit TLS))
 
 ### Current Configuration
 
 Passbolt configured to use SMTP4Dev with SMTPS (implicit TLS):
 
 ```yaml
+# Email Configuration
 EMAIL_TRANSPORT_DEFAULT_HOST: "ssl://smtp.local"
 EMAIL_TRANSPORT_DEFAULT_PORT: 25
 EMAIL_TRANSPORT_DEFAULT_USERNAME: ""
 EMAIL_TRANSPORT_DEFAULT_PASSWORD: ""
 EMAIL_DEFAULT_FROM: "admin@passbolt.com"
+
+# SMTP Settings (SMTPS - implicit TLS)
+# Note: SMTP security settings are configured via Passbolt Web UI
 ```
 
-### TLS Certificate Setup
+### TLS Certificate and Private Key Setup
 
 ```bash
 # Create certificates directory
 mkdir -p smtp4dev/certs
 
-# Generate private key and certificate
+# Generate private key and corresponding certificate
 openssl req -x509 -newkey rsa:4096 \
   -keyout smtp4dev/certs/tls.key \
   -out smtp4dev/certs/tls.crt \
@@ -820,11 +845,11 @@ docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
 
 **Root Cause**: This is expected behavior. The osixia/openldap image supports both:
 - LDAPS (implicit TLS) on port 636 - used by Passbolt
-- LDAP with STARTTLS (explicit TLS upgrade) on port 389 - alternative for Passbolt
+- LDAP with STARTTLS on port 389 - another option for Passbolt
 
 **Solutions**:
 - For Passbolt: Use LDAPS on port 636 (current configuration)
-- For alternative: Use LDAP with STARTTLS on port 389
+- For another option: Use LDAP with STARTTLS on port 389
 - Both methods work with the same certificate configuration
 
 #### Verify Certificate Files Exist
