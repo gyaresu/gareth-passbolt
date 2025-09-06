@@ -100,8 +100,8 @@ services:
       PASSBOLT_PLUGINS_SMTP_SETTINGS_SECURITY_SSL_ALLOW_SELF_SIGNED: true
       PASSBOLT_PLUGINS_SMTP_SETTINGS_SECURITY_SSL_CAFILE: "/etc/ssl/certs/smtp_local.crt"
       
-      # Directory Sync Plugin (LDAPS - implicit TLS, SSL verification settings only - Note: Currently not working, see task PB-45139 for fix)
-      PASSBOLT_PLUGINS_DIRECTORY_SYNC_ENABLED: "true"
+      # Directory Sync Plugin (LDAPS and LDAP with STARTTLS both enabled)
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_ENABLED: "true" # Note: not functional. Hard coded 'false', see task PB-45139 for task)
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_ENABLED: "true"
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_VERIFY_PEER: "true"
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_CAFILE: "/etc/ssl/certs/ldaps_bundle.crt"
