@@ -1,15 +1,14 @@
 # Passbolt Pro Demonstration Stack
 
-Docker Compose setup for testing Passbolt Pro with SSO integration, LDAPS (implicit TLS) directory synchronization, and TLS security.
-
 > Demo Environment: This repository contains demo credentials and self-signed certificates for testing only. Do not use in production without proper security configuration.
 
 ## What This Demonstrates
 
 - Passbolt Pro with OIDC SSO integration (Keycloak over HTTPS)
-- LDAPS (implicit TLS) for directory synchronization
+- LDAPS (implicit TLS) "ldap://ssl" and port 636 in Web UI
+- LDAP with STARTTLS (explicit TLS) "ldap://tls" and 389 in Web UI
 - SMTPS (implicit TLS) for secure email communication
-- HTTPS for Passbolt and Keycloak web interfaces
+- HTTPS (implicit TLS) for Passbolt and Keycloak web interfaces
 - Testing environment with email, database, and user management
 - Certificate automation for development and testing scenarios
 
