@@ -79,6 +79,7 @@ services:
     depends_on:
       - db
       - keycloak
+      - valkey
     environment:
       # Core Application Configuration
       APP_FULL_BASE_URL: https://passbolt.local
@@ -110,6 +111,15 @@ services:
       PASSBOLT_PLUGINS_SSO_ENABLED: "true"
       PASSBOLT_PLUGINS_SSO_PROVIDER_OAUTH2_ENABLED: "true"
       PASSBOLT_SECURITY_SSO_SSL_VERIFY: "true"
+
+      # Valkey sessions
+      CACHE_CAKECORE_CLASSNAME: Cake\Cache\Engine\RedisEngine
+      CACHE_CAKECORE_HOST: valkey
+      CACHE_CAKECORE_PORT: 6379
+      CACHE_CAKECORE_PASSWORD: ""
+      CACHE_CAKECORE_DATABASE: 0
+      SESSION_DEFAULTS: cache
+
     volumes:
       - gpg_volume:/etc/passbolt/gpg
       - jwt_volume:/etc/passbolt/jwt
@@ -175,6 +185,16 @@ services:
       default:
         aliases:
           - ldap.local
+  valkey:
+    image: valkey/valkey:9.0-trixie
+    container_name: valkey
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey_data:/data
+    command: valkey-server --appendonly yes
+    
 
 volumes:
   database_volume:
@@ -193,3 +213,5 @@ volumes:
     name: ${COMPOSE_PROJECT_NAME}_ldap_config
   ldap_certs:
     name: ${COMPOSE_PROJECT_NAME}_ldap_certs
+  valkey_data:
+    name: ${COMPOSE_PROJECT_NAME}_valkey_data

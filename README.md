@@ -9,6 +9,7 @@
 - LDAP with STARTTLS (explicit TLS) "ldap://tls" and 389 in Web UI
 - SMTPS (implicit TLS) for secure email communication
 - HTTPS (implicit TLS) for Passbolt and Keycloak web interfaces
+- Valkey (Redis-compatible) session handling for improved performance and scalability
 - Testing environment with email, database, and user management
 - Certificate automation for development and testing scenarios
 
@@ -23,6 +24,7 @@
 
 - [Quick Start](#quick-start)
 - [Services Overview](#services-overview)
+- [Valkey Session Handling](#valkey-session-handling)
 - [LDAPS Configuration](#ldaps-configuration)
 - [Keycloak SSO Configuration](#keycloak-sso-configuration)
 - [SMTP Configuration](#smtp-configuration)
@@ -107,6 +109,41 @@ This script will:
 | SMTP4Dev  | http://smtp.local:5050    | N/A               | Email testing |
 | LDAP      | ldap.local:636 (LDAPS (implicit TLS))   | cn=readonly,dc=passbolt,dc=local / readonly | User directory (read-only sync) |
 | LDAP      | ldap.local:389 (LDAP with STARTTLS) | cn=admin,dc=passbolt,dc=local / P4ssb0lt | User directory (admin access) |
+| Valkey    | valkey:6379 (internal)    | N/A               | Session storage and caching |
+
+## Valkey Session Handling
+
+This setup uses Valkey for session storage instead of file-based sessions. Valkey is Redis-compatible and provides better performance and scalability.
+
+### Configuration
+
+Valkey service:
+```yaml
+valkey:
+  image: valkey/valkey:9.0-trixie
+  ports: ["6379:6379"]
+  volumes: [valkey_data:/data]
+  command: valkey-server --appendonly yes
+```
+
+Passbolt environment variables:
+```yaml
+CACHE_CAKECORE_CLASSNAME: Cake\Cache\Engine\RedisEngine
+CACHE_CAKECORE_HOST: valkey
+CACHE_CAKECORE_PORT: 6379
+CACHE_CAKECORE_PASSWORD: ""
+CACHE_CAKECORE_DATABASE: 0
+SESSION_DEFAULTS: cache
+```
+
+### Testing
+```bash
+# Test connectivity
+docker compose exec valkey valkey-cli ping
+
+# Check sessions
+docker compose exec valkey valkey-cli keys "*session*"
+```
 
 ## Environment Variables Configuration
 
@@ -125,6 +162,10 @@ The Docker Compose configuration uses environment variables that are documented 
 - `PASSBOLT_PLUGINS_SSO_ENABLED` - Enable SSO plugin
 - `PASSBOLT_PLUGINS_SSO_PROVIDER_OAUTH2_ENABLED` - Enable OAuth2 SSO provider
 - `PASSBOLT_SECURITY_SSO_SSL_VERIFY` - SSO SSL verification
+
+### Session Configuration
+- `CACHE_CAKECORE_*` - Valkey cache engine settings
+- `SESSION_DEFAULTS` - Session storage method
 
 ### Important Notes
 - **Directory Sync detailed configuration** (host, port, credentials, filters) is done via Passbolt Web UI, not environment variables
@@ -557,6 +598,15 @@ docker compose logs smtp4dev
 docker compose logs passbolt | grep -i email
 ```
 
+### Valkey Session Storage Test
+```bash
+# Test Valkey connectivity
+docker compose exec valkey valkey-cli ping
+
+# List active sessions
+docker compose exec valkey valkey-cli keys "*session*"
+```
+
 ### LDAP Integration Tests
 ```bash
 ./scripts/tests/integration/test-ldap.sh
@@ -740,6 +790,14 @@ docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
 - Check certificate files exist and have correct permissions
 - Verify SMTP configuration in Passbolt
 - Check SMTP4Dev logs for connection issues
+
+### Valkey Session Issues
+**Symptoms**: Session handling failures, users getting logged out unexpectedly
+
+**Solutions**:
+- Verify Valkey container is running: `docker compose ps valkey`
+- Check Valkey connectivity: `docker compose exec passbolt ping valkey`
+- Check Valkey logs: `docker compose logs valkey`
 
 #### Manual Email Test
 Send a test email using SMTP4Dev API:
