@@ -129,6 +129,7 @@ services:
       - ./keys/ca.crt:/usr/local/share/ca-certificates/keycloak.crt
       - ./smtp4dev/certs/tls.crt:/etc/ssl/certs/smtp_local.crt:ro
       - ./certs/ldaps_bundle.crt:/etc/ssl/certs/ldaps_bundle.crt:ro
+      - ./certs/ldaps_bundle.crt:/usr/local/share/ca-certificates/ldap-ca.crt:ro # added after image updates
       - ./subscription_key.txt:/etc/passbolt/subscription_key.txt:ro
     command:
       - /bin/bash
