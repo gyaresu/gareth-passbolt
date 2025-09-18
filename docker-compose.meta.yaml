@@ -1,0 +1,117 @@
+# OpenLDAP Meta Backend LDAP Aggregation
+# Production-ready solution based on proven implementation
+# Use: docker compose -f docker-compose.yaml -f docker-compose.meta.yaml up
+
+services:
+  # Override existing ldap service to disable it
+  ldap:
+    profiles:
+      - disabled
+
+  # Extend passbolt to depend on ldap-meta
+  passbolt:
+    depends_on:
+      - db
+      - keycloak
+      - valkey
+      - ldap-meta
+    volumes:
+      - gpg_volume:/etc/passbolt/gpg
+      - jwt_volume:/etc/passbolt/jwt
+      - ./config/php/www.conf:/etc/php-fpm.d/www.conf
+      - ./config/php/ssl.ini:/etc/php/8.2/cli/conf.d/99-ssl.ini
+      - ./config/nginx/nginx-passbolt.conf:/etc/nginx/sites-enabled/nginx-passbolt.conf
+      - ./keys/ca.crt:/usr/local/share/ca-certificates/keycloak.crt
+      - ./smtp4dev/certs/tls.crt:/etc/ssl/certs/smtp_local.crt:ro
+      - ./certs/ldaps_bundle.crt:/etc/ssl/certs/ldaps_bundle.crt:ro
+      - ./certs/ldaps_bundle.crt:/usr/local/share/ca-certificates/ldap-ca.crt:ro
+      - ./subscription_key.txt:/etc/passbolt/subscription_key.txt:ro
+
+  # LDAP Server 1 - Passbolt structure
+  ldap1:
+    image: osixia/openldap:1.5.0
+    container_name: ldap1
+    hostname: ldap1.local
+    restart: unless-stopped
+    environment:
+      LDAP_ORGANISATION: "Passbolt"
+      LDAP_DOMAIN: "passbolt.local"
+      LDAP_ADMIN_PASSWORD: "P4ssb0lt"
+      LDAP_CONFIG_PASSWORD: "P4ssb0lt"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "readonly"
+      LDAP_TLS: "true"
+      LDAP_TLS_VERIFY_CLIENT: "never"
+      LDAP_BASE_DN: "dc=passbolt,dc=local"
+      LDAP_USERS_DN: "ou=users,dc=passbolt,dc=local"
+      LDAP_GROUPS_DN: "ou=groups,dc=passbolt,dc=local"
+    volumes:
+      - ldap1_data:/var/lib/ldap
+      - ldap1_config:/etc/ldap/slapd.d
+      - ldap1_certs:/container/service/slapd/assets/certs
+    networks:
+      default:
+        aliases:
+          - ldap1.local
+
+  # LDAP Server 2 - Company structure
+  ldap2:
+    image: osixia/openldap:1.5.0
+    container_name: ldap2
+    hostname: ldap2.local
+    restart: unless-stopped
+    environment:
+      LDAP_ORGANISATION: "Company Corp"
+      LDAP_DOMAIN: "company.org"
+      LDAP_ADMIN_PASSWORD: "C0mp4ny123"
+      LDAP_CONFIG_PASSWORD: "C0mp4ny123"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "reader"
+      LDAP_READONLY_USER_PASSWORD: "reader123"
+      LDAP_TLS: "true"
+      LDAP_TLS_VERIFY_CLIENT: "never"
+      LDAP_BASE_DN: "dc=company,dc=org"
+      LDAP_USERS_DN: "ou=people,dc=company,dc=org"
+      LDAP_GROUPS_DN: "ou=teams,dc=company,dc=org"
+    volumes:
+      - ldap2_data:/var/lib/ldap
+      - ldap2_config:/etc/ldap/slapd.d
+      - ldap2_certs:/container/service/slapd/assets/certs
+    networks:
+      default:
+        aliases:
+          - ldap2.local
+
+  # OpenLDAP Meta Backend for LDAP Aggregation
+  ldap-meta:
+    build:
+      context: .
+      dockerfile: Dockerfile.ldap-meta
+    container_name: ldap-meta
+    hostname: ldap-meta.local
+    restart: unless-stopped
+    depends_on:
+      - ldap1
+      - ldap2
+    ports:
+      - "3389:389"
+      - "3636:636"
+    networks:
+      default:
+        aliases:
+          - ldap-meta.local
+
+volumes:
+  ldap1_data:
+    name: ${COMPOSE_PROJECT_NAME}_ldap1_data
+  ldap1_config:
+    name: ${COMPOSE_PROJECT_NAME}_ldap1_config
+  ldap1_certs:
+    name: ${COMPOSE_PROJECT_NAME}_ldap1_certs
+  ldap2_data:
+    name: ${COMPOSE_PROJECT_NAME}_ldap2_data
+  ldap2_config:
+    name: ${COMPOSE_PROJECT_NAME}_ldap2_config
+  ldap2_certs:
+    name: ${COMPOSE_PROJECT_NAME}_ldap2_certs
