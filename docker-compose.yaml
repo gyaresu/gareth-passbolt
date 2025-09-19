@@ -1,5 +1,6 @@
-# Passbolt Pro Demonstration Stack with LDAP Aggregation
-# Default setup aggregates multiple LDAP directories for unified synchronization
+# Passbolt Pro Demonstration Stack - Multi-Domain LDAP
+# Multi-domain LDAP directory synchronization using PHP configuration
+# Demonstrates enterprise merger scenario with aggregated directory sync
 # Use: docker compose up -d
 
 services:
@@ -85,7 +86,8 @@ services:
       - db
       - keycloak
       - valkey
-      - ldap-meta
+      - ldap1
+      - ldap2
     environment:
       APP_FULL_BASE_URL: https://passbolt.local
       DATASOURCES_DEFAULT_HOST: "db"
@@ -126,6 +128,7 @@ services:
       - ./config/php/www.conf:/etc/php-fpm.d/www.conf
       - ./config/php/ssl.ini:/etc/php/8.2/cli/conf.d/99-ssl.ini
       - ./config/nginx/nginx-passbolt.conf:/etc/nginx/sites-enabled/nginx-passbolt.conf
+      - ./config/passbolt/ldap.php:/etc/passbolt/ldap.php:ro
       - ./keys/ca.crt:/usr/local/share/ca-certificates/keycloak.crt
       - ./smtp4dev/certs/tls.crt:/etc/ssl/certs/smtp_local.crt:ro
       - ./certs/ldaps_bundle.crt:/etc/ssl/certs/ldaps_bundle.crt:ro
@@ -204,26 +207,6 @@ services:
         aliases:
           - ldap2.local
 
-  # OpenLDAP Meta Backend - LDAP Aggregation Proxy
-  # Combines both LDAP directories into unified namespace: dc=unified,dc=local
-  # Enables Passbolt to sync users from both companies simultaneously
-  ldap-meta:
-    build:
-      context: .
-      dockerfile: Dockerfile.ldap-meta
-    container_name: ldap-meta
-    hostname: ldap-meta.local
-    restart: unless-stopped
-    depends_on:
-      - ldap1
-      - ldap2
-    ports:
-      - "3389:389"
-      - "3636:636"
-    networks:
-      default:
-        aliases:
-          - ldap-meta.local
 
 volumes:
   database_volume:

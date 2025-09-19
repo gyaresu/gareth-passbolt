@@ -52,30 +52,38 @@ Subkey-Type: ECDH
 Subkey-Curve: Curve25519
 Name-Real: $name
 Name-Email: $email
-Expire-Date: 1y
+Expire-Date: 0
 Passphrase: $email
 %commit
 %echo ECC GPG key generated for $name
 EOF
 
-    # Generate the key
-    gpg --batch --generate-key /tmp/gpg_batch_${email//[@.]/_}
+    # Generate the key in a temporary GPG home directory
+    TEMP_GPG_HOME="/tmp/gpg_${email//[@.]/_}"
+    mkdir -p "$TEMP_GPG_HOME"
+    chmod 700 "$TEMP_GPG_HOME"
     
-    # Export private key
-    gpg --batch --yes --pinentry-mode loopback --passphrase "$email" \
+    # Generate key in isolated environment
+    GNUPGHOME="$TEMP_GPG_HOME" gpg --batch --generate-key /tmp/gpg_batch_${email//[@.]/_}
+    
+    # Export private key from temporary home
+    GNUPGHOME="$TEMP_GPG_HOME" gpg --batch --yes --pinentry-mode loopback --passphrase "$email" \
         --armor --export-secret-keys "$email" > "$key_file"
     
-    # Export public key
-    gpg --batch --yes --armor --export "$email" > "$pub_file"
+    # Export public key from temporary home
+    GNUPGHOME="$TEMP_GPG_HOME" gpg --batch --yes --armor --export "$email" > "$pub_file"
+    
+    # Clean up temporary GPG home
+    rm -rf "$TEMP_GPG_HOME"
     
     # Clean up batch file
     rm /tmp/gpg_batch_${email//[@.]/_}
     
-    echo "✅ Generated ECC GPG key for $name"
-    echo "   Private key: $key_file"
-    echo "   Public key: $pub_file"
-    echo "   Key type: Ed25519/Curve25519 (ECC)"
-    echo "   Passphrase: $email"
+    echo "Generated ECC GPG key for $name"
+    echo "  Private key: $key_file"
+    echo "  Public key: $pub_file"
+    echo "  Key type: Ed25519/Curve25519 (ECC)"
+    echo "  Passphrase: $email"
     echo ""
 }
 
@@ -86,7 +94,7 @@ echo "$DEMO_USERS" | while IFS=: read -r email name; do
     
     # Check if key already exists
     if [ -f "keys/gpg/${email}.key" ]; then
-        echo "⏭️  GPG key for $name ($email) already exists, skipping..."
+        echo "GPG key for $name ($email) already exists, skipping..."
         continue
     fi
     
@@ -95,29 +103,24 @@ done
 
 echo "ECC GPG key generation complete!"
 echo ""
-echo "Generated modern ECC keys for:"
-echo "📁 LDAP1 (Passbolt Inc.):"
-echo "   - Ada Lovelace (ada@passbolt.com)"
-echo "   - Betty Holberton (betty@passbolt.com)"
-echo "   - Carol Shaw (carol@passbolt.com)"
-echo "   - Dame Stephanie Shirley (dame@passbolt.com)"
-echo "   - Edith Clarke (edith@passbolt.com)"
+echo "Generated ECC keys for:"
+echo "LDAP1 (Passbolt Inc.):"
+echo "  - Ada Lovelace (ada@passbolt.com)"
+echo "  - Betty Holberton (betty@passbolt.com)"
+echo "  - Carol Shaw (carol@passbolt.com)"
+echo "  - Dame Stephanie Shirley (dame@passbolt.com)"
+echo "  - Edith Clarke (edith@passbolt.com)"
 echo ""
-echo "📁 LDAP2 (Example Corp.):"
-echo "   - John Smith (john.smith@example.com)"
-echo "   - Sarah Johnson (sarah.johnson@example.com)"
-echo "   - Michael Chen (michael.chen@example.com)"
-echo "   - Lisa Rodriguez (lisa.rodriguez@example.com)"
+echo "LDAP2 (Example Corp.):"
+echo "  - John Smith (john.smith@example.com)"
+echo "  - Sarah Johnson (sarah.johnson@example.com)"
+echo "  - Michael Chen (michael.chen@example.com)"
+echo "  - Lisa Rodriguez (lisa.rodriguez@example.com)"
 echo ""
-echo "🔐 Key Details:"
-echo "   • Algorithm: Ed25519 (EdDSA) + Curve25519 (ECDH)"
-echo "   • Security: Modern elliptic curve cryptography"
-echo "   • Performance: Faster than RSA, smaller key size"
-echo "   • Passphrase: email address (for demo convenience)"
-echo "📂 Keys stored in: keys/gpg/"
+echo "Key Details:"
+echo "  Algorithm: Ed25519 (EdDSA) + Curve25519 (ECDH)"
+echo "  Expiry: None (Passbolt compatible)"
+echo "  Passphrase: email address"
+echo "  Location: keys/gpg/"
 echo ""
-echo "Next steps:"
-echo "1. Users can import their private keys into Passbolt"
-echo "2. Use email address as passphrase during import"
-echo "3. Test login with aggregated LDAP users"
-echo "4. Enjoy modern ECC cryptography performance!"
+echo "Import private key into Passbolt using email address as passphrase."

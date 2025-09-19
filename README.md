@@ -108,13 +108,13 @@ This script provides the basic single LDAP setup without aggregation.
 
 > Demo Credentials: All passwords and credentials in this repository are for demonstration purposes only. In production, use strong, unique credentials and proper certificate authorities.
 
-## LDAP Aggregation
+## Multi-Domain LDAP Synchronization
 
-This setup demonstrates LDAP result aggregation using OpenLDAP meta backend. Multiple LDAP directories are combined into a single unified interface for Passbolt synchronization.
+This setup demonstrates multi-domain LDAP directory synchronization using Passbolt's PHP configuration. Multiple LDAP directories are aggregated at the application level for unified user and group management.
 
 ### Configuration
 
-LDAP aggregation is now the default setup:
+Multi-domain LDAP synchronization is the default setup:
 ```bash
 docker compose up -d
 ```
@@ -126,105 +126,90 @@ docker compose -f docker-compose.single-ldap.yaml up -d
 
 ### Architecture
 
-- **ldap-meta**: OpenLDAP meta backend proxy (Debian 13, OpenLDAP 2.6.10)
-- **ldap1**: Passbolt directory structure (dc=passbolt,dc=local)
-- **ldap2**: Company directory structure (dc=company,dc=org)
+- **ldap1**: Passbolt Inc. directory (dc=passbolt,dc=local)
+- **ldap2**: Example Corp directory (dc=example,dc=com)
+- **Passbolt**: Aggregates users and groups from both directories via PHP configuration
 
-### Unified Namespace
+### Multi-Domain Configuration
 
-- **Endpoint**: ldap-meta.local:3389
-- **Base DN**: dc=unified,dc=local
-- **Bind DN**: cn=admin,dc=unified,dc=local
-- **Password**: secret
-
-### Backend Mapping
-
-- **Passbolt users**: dc=passbolt,dc=unified,dc=local → dc=passbolt,dc=local
-- **Example Corp users**: dc=example,dc=unified,dc=local → dc=example,dc=com
+- **LDAP1**: `ldap1.local:389` - Passbolt Inc. (Historical computing pioneers)
+- **LDAP2**: `ldap2.local:389` - Example Corp (Modern tech professionals)
+- **Configuration**: `config/passbolt/ldap.php` - Defines both domains
 
 ### Technical Implementation
 
-The LDAP aggregation uses OpenLDAP's `meta` backend to achieve true result aggregation:
+The multi-domain LDAP synchronization uses Passbolt's PHP configuration to achieve application-level aggregation:
 
-#### **DN Rewriting (suffixmassage)**
-- **Purpose**: Translates between unified namespace and backend namespaces
-- **LDAP1 mapping**: `dc=passbolt,dc=unified,dc=local` ↔ `dc=passbolt,dc=local`
-- **LDAP2 mapping**: `dc=example,dc=unified,dc=local` ↔ `dc=example,dc=com`
-- **Direction**: Queries to unified namespace are rewritten for backend servers
+#### **Multi-Domain Configuration**
+- **Purpose**: Defines multiple LDAP domains in a single PHP configuration file
+- **LDAP1 domain**: `passbolt` domain connecting to `ldap1.local:389`
+- **LDAP2 domain**: `example` domain connecting to `ldap2.local:389`
+- **Authentication**: Each domain uses its own service account credentials
 
-#### **Identity Assertion (idassert-bind)**
-- **Purpose**: Authenticates to backend servers using service accounts
-- **LDAP1 credentials**: `cn=readonly,dc=passbolt,dc=local` / `readonly`
-- **LDAP2 credentials**: `cn=reader,dc=example,dc=com` / `reader123`
-- **Mode**: `none` with `flags=non-prescriptive` for transparent proxy behavior
+#### **Application-Level Aggregation**
+- **Sync process**: Passbolt queries both LDAP servers during directory sync
+- **User aggregation**: Users from both domains imported into single Passbolt instance
+- **Group aggregation**: Groups from both domains created with proper memberships
+- **Field mapping**: OpenLDAP `uniqueMember` attribute mapped for group membership resolution
 
-#### **Result Aggregation**
-- **Single query**: Client searches `dc=unified,dc=local`
-- **Backend queries**: Meta backend queries both LDAP1 and LDAP2 simultaneously
-- **Result merging**: Responses from both backends combined into single result set
-- **DN translation**: Backend DNs rewritten to unified namespace in responses
+#### **Key Configuration Elements**
+- **Domain definitions**: Each LDAP server defined as separate domain in PHP config
+- **Field mapping**: `fieldsMapping` specifies `uniqueMember` for OpenLDAP group membership
+- **Object classes**: `inetOrgPerson` for users, `groupOfUniqueNames` for groups
+- **Directory paths**: Domain-specific `user_path` and `group_path` for different OU structures
 
 #### **Why This Works**
-- **True aggregation**: Not load balancing - actual result combination
-- **Transparent proxy**: Clients see single LDAP directory
-- **Scalable**: Can add more backends by adding URI/suffixmassage blocks
-- **Standards compliant**: Uses standard LDAP protocol throughout
+- **Native support**: Uses Passbolt's built-in multi-domain LDAP capabilities
+- **No proxy needed**: Direct connection to each LDAP server
+- **Automatic sync**: Hourly cron job keeps users and groups synchronized
+- **Scalable**: Can add more domains by extending the PHP configuration
 
 ### Implementation Approach
 
-This repository implements LDAP aggregation using a custom-built OpenLDAP meta backend container:
+This repository implements multi-domain LDAP synchronization using Passbolt's native PHP configuration:
 
-#### **Container Architecture**
-- **Base image**: `debian:trixie-slim` (Debian 13) for stability and current OpenLDAP version
-- **OpenLDAP version**: 2.6.10 with meta backend module support
-- **Configuration method**: Traditional `slapd.conf` (not `cn=config`) for clarity and version control
+#### **Configuration Architecture**
+- **Base approach**: PHP configuration file defines multiple LDAP domains
+- **No proxy needed**: Direct connections to each LDAP server
+- **Configuration method**: Static PHP file (`config/passbolt/ldap.php`) for version control
 
 #### **Key Implementation Files**
-- **`Dockerfile.ldap-meta`**: Custom container build with meta backend modules
-- **`config/ldap-meta/slapd.conf`**: Meta backend configuration with DN mappings
-- **`config/ldap-meta/entrypoint.sh`**: Startup script with backend health checks
-- **`docker-compose.yaml`**: Service orchestration with proper dependency order
+- **`config/passbolt/ldap.php`**: Multi-domain LDAP configuration with field mappings
+- **`docker-compose.yaml`**: Service orchestration for both LDAP servers
+- **`/etc/cron.hourly/passbolt-directory-sync`**: Automatic synchronization script
 
 #### **Configuration Strategy**
-- **Static configuration**: Uses `slapd.conf` instead of dynamic `cn=config` for reproducibility
-- **Module loading**: Explicitly loads `back_ldap` and `back_meta` modules
-- **Health checks**: Waits for backend LDAP servers before starting proxy
-- **Certificate management**: Self-signed certificates for demo, easily replaceable for production
-
-#### **Why Meta Backend Over Alternatives**
-- **vs HAProxy**: Meta backend provides true LDAP result aggregation, not just load balancing
-- **vs 389 Directory Server**: OpenLDAP meta backend is more lightweight and Docker-friendly
-- **vs Custom proxy**: Uses proven LDAP server technology instead of custom protocol implementation
-- **vs Commercial solutions**: Open source, no licensing costs, full control over configuration
+- **Multi-domain setup**: Each LDAP server defined as separate domain
+- **Field mapping**: Explicit mapping of `uniqueMember` for group membership resolution
+- **Automatic sync**: Hourly cron job ensures continuous synchronization
+- **Domain-specific paths**: Custom `user_path` and `group_path` for different directory structures
 
 ### References
 
-- **OpenLDAP Meta Backend Documentation**: https://www.openldap.org/doc/admin24/backends.html#meta
-- **slapd-meta Manual**: https://linux.die.net/man/5/slapd-meta
+- **Passbolt LDAP Documentation**: https://www.passbolt.com/configure/ldap
+- **LdapRecord Multi-Domain**: https://ldaprecord.com/docs/laravel/v2/configuration
 - **OpenLDAP Admin Guide**: https://www.openldap.org/doc/admin24/
 - **RFC 4511 (LDAP Protocol)**: https://tools.ietf.org/html/rfc4511
 
 ### Passbolt Configuration
 
-Configure Passbolt LDAP settings to use the aggregated endpoint:
+Passbolt is configured via the PHP file (`config/passbolt/ldap.php`) which defines both LDAP domains:
 
-**For LDAPS (Recommended):**
-- Server: ldap-meta.local
-- Port: 636
-- Use TLS: Yes (LDAPS - implicit TLS)
-- Base DN: dc=unified,dc=local
-- Bind DN: cn=admin,dc=unified,dc=local
-- Password: secret
-
-**For LDAP with STARTTLS (Alternative):**
-- Server: ldap-meta.local
+**LDAP1 (Passbolt Inc.):**
+- Server: ldap1.local
 - Port: 389
-- Use TLS: Yes (STARTTLS - explicit TLS)
-- Base DN: dc=unified,dc=local
-- Bind DN: cn=admin,dc=unified,dc=local
-- Password: secret
+- Base DN: dc=passbolt,dc=local
+- Username: cn=readonly,dc=passbolt,dc=local
+- Password: readonly
 
-**Note**: Use internal container ports (389/636), not external host ports (3389/3636)
+**LDAP2 (Example Corp.):**
+- Server: ldap2.local
+- Port: 389
+- Base DN: dc=example,dc=com
+- Username: cn=reader,dc=example,dc=com
+- Password: reader123
+
+**Note**: Configuration is handled entirely through the PHP file - no web UI LDAP configuration needed
 
 ## Services Overview
 
@@ -233,8 +218,7 @@ Configure Passbolt LDAP settings to use the aggregated endpoint:
 | Passbolt  | https://passbolt.local    | Created during setup | Main application |
 | Keycloak  | https://keycloak.local:8443 | admin / admin    | SSO provider |
 | SMTP4Dev  | http://smtp.local:5050    | N/A               | Email testing |
-| LDAP Meta | ldap-meta.local:389 (LDAP), :636 (LDAPS) | cn=admin,dc=unified,dc=local / secret | LDAP aggregation proxy |
-| LDAP1     | ldap1.local:389 (LDAPS/STARTTLS) | cn=readonly,dc=passbolt,dc=local / readonly | Passbolt directory |
+| LDAP1     | ldap1.local:389 (LDAPS/STARTTLS) | cn=readonly,dc=passbolt,dc=local / readonly | Passbolt Inc. directory |
 | LDAP2     | ldap2.local:389 (LDAPS/STARTTLS) | cn=reader,dc=example,dc=com / reader123 | Example Corp directory |
 | Valkey    | valkey:6379 (internal)    | N/A               | Session storage and caching |
 
