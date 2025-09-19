@@ -35,19 +35,28 @@
 ## Quick Start
 
 ### Automated Setup
-Use the automated setup script:
+
+#### LDAP Aggregation Demo (Recommended)
+Use the complete aggregation setup script for the full merger scenario:
+```bash
+./scripts/setup-aggregation-demo.sh
+```
+
+This script will:
+- Set up LDAP1 (Passbolt Inc.) with historical computing pioneers
+- Set up LDAP2 (Example Corp.) with modern tech professionals
+- Configure OpenLDAP meta backend for result aggregation
+- Generate ECC GPG keys for all demo users (passphrase = email)
+- Create Passbolt admin user 'ada' (exists in LDAP before creation)
+- Demonstrate enterprise LDAP aggregation for company mergers
+
+#### Basic Single LDAP Setup
+Use the original setup script for single directory:
 ```bash
 ./scripts/setup.sh
 ```
 
-This script will:
-- Check for required certificate files
-- Verify Docker installation
-- Start all services
-- Extract LDAP certificates from container
-- Rebuild Passbolt container with the correct certificate bundle
-- Create admin user 'ada' (sends registration email to SMTP4Dev)
-- Provide access URLs
+This script provides the basic single LDAP setup without aggregation.
 
 ### Manual Setup
 
@@ -131,16 +140,91 @@ docker compose -f docker-compose.single-ldap.yaml up -d
 ### Backend Mapping
 
 - **Passbolt users**: dc=passbolt,dc=unified,dc=local → dc=passbolt,dc=local
-- **Company users**: dc=company,dc=unified,dc=local → dc=company,dc=org
+- **Example Corp users**: dc=example,dc=unified,dc=local → dc=example,dc=com
+
+### Technical Implementation
+
+The LDAP aggregation uses OpenLDAP's `meta` backend to achieve true result aggregation:
+
+#### **DN Rewriting (suffixmassage)**
+- **Purpose**: Translates between unified namespace and backend namespaces
+- **LDAP1 mapping**: `dc=passbolt,dc=unified,dc=local` ↔ `dc=passbolt,dc=local`
+- **LDAP2 mapping**: `dc=example,dc=unified,dc=local` ↔ `dc=example,dc=com`
+- **Direction**: Queries to unified namespace are rewritten for backend servers
+
+#### **Identity Assertion (idassert-bind)**
+- **Purpose**: Authenticates to backend servers using service accounts
+- **LDAP1 credentials**: `cn=readonly,dc=passbolt,dc=local` / `readonly`
+- **LDAP2 credentials**: `cn=reader,dc=example,dc=com` / `reader123`
+- **Mode**: `none` with `flags=non-prescriptive` for transparent proxy behavior
+
+#### **Result Aggregation**
+- **Single query**: Client searches `dc=unified,dc=local`
+- **Backend queries**: Meta backend queries both LDAP1 and LDAP2 simultaneously
+- **Result merging**: Responses from both backends combined into single result set
+- **DN translation**: Backend DNs rewritten to unified namespace in responses
+
+#### **Why This Works**
+- **True aggregation**: Not load balancing - actual result combination
+- **Transparent proxy**: Clients see single LDAP directory
+- **Scalable**: Can add more backends by adding URI/suffixmassage blocks
+- **Standards compliant**: Uses standard LDAP protocol throughout
+
+### Implementation Approach
+
+This repository implements LDAP aggregation using a custom-built OpenLDAP meta backend container:
+
+#### **Container Architecture**
+- **Base image**: `debian:trixie-slim` (Debian 13) for stability and current OpenLDAP version
+- **OpenLDAP version**: 2.6.10 with meta backend module support
+- **Configuration method**: Traditional `slapd.conf` (not `cn=config`) for clarity and version control
+
+#### **Key Implementation Files**
+- **`Dockerfile.ldap-meta`**: Custom container build with meta backend modules
+- **`config/ldap-meta/slapd.conf`**: Meta backend configuration with DN mappings
+- **`config/ldap-meta/entrypoint.sh`**: Startup script with backend health checks
+- **`docker-compose.yaml`**: Service orchestration with proper dependency order
+
+#### **Configuration Strategy**
+- **Static configuration**: Uses `slapd.conf` instead of dynamic `cn=config` for reproducibility
+- **Module loading**: Explicitly loads `back_ldap` and `back_meta` modules
+- **Health checks**: Waits for backend LDAP servers before starting proxy
+- **Certificate management**: Self-signed certificates for demo, easily replaceable for production
+
+#### **Why Meta Backend Over Alternatives**
+- **vs HAProxy**: Meta backend provides true LDAP result aggregation, not just load balancing
+- **vs 389 Directory Server**: OpenLDAP meta backend is more lightweight and Docker-friendly
+- **vs Custom proxy**: Uses proven LDAP server technology instead of custom protocol implementation
+- **vs Commercial solutions**: Open source, no licensing costs, full control over configuration
+
+### References
+
+- **OpenLDAP Meta Backend Documentation**: https://www.openldap.org/doc/admin24/backends.html#meta
+- **slapd-meta Manual**: https://linux.die.net/man/5/slapd-meta
+- **OpenLDAP Admin Guide**: https://www.openldap.org/doc/admin24/
+- **RFC 4511 (LDAP Protocol)**: https://tools.ietf.org/html/rfc4511
 
 ### Passbolt Configuration
 
 Configure Passbolt LDAP settings to use the aggregated endpoint:
+
+**For LDAPS (Recommended):**
 - Server: ldap-meta.local
-- Port: 3389
+- Port: 636
+- Use TLS: Yes (LDAPS - implicit TLS)
 - Base DN: dc=unified,dc=local
 - Bind DN: cn=admin,dc=unified,dc=local
 - Password: secret
+
+**For LDAP with STARTTLS (Alternative):**
+- Server: ldap-meta.local
+- Port: 389
+- Use TLS: Yes (STARTTLS - explicit TLS)
+- Base DN: dc=unified,dc=local
+- Bind DN: cn=admin,dc=unified,dc=local
+- Password: secret
+
+**Note**: Use internal container ports (389/636), not external host ports (3389/3636)
 
 ## Services Overview
 
@@ -149,9 +233,9 @@ Configure Passbolt LDAP settings to use the aggregated endpoint:
 | Passbolt  | https://passbolt.local    | Created during setup | Main application |
 | Keycloak  | https://keycloak.local:8443 | admin / admin    | SSO provider |
 | SMTP4Dev  | http://smtp.local:5050    | N/A               | Email testing |
-| LDAP Meta | ldap-meta.local:3389 (LDAP), :3636 (LDAPS) | cn=admin,dc=unified,dc=local / secret | LDAP aggregation proxy |
+| LDAP Meta | ldap-meta.local:389 (LDAP), :636 (LDAPS) | cn=admin,dc=unified,dc=local / secret | LDAP aggregation proxy |
 | LDAP1     | ldap1.local:389 (LDAPS/STARTTLS) | cn=readonly,dc=passbolt,dc=local / readonly | Passbolt directory |
-| LDAP2     | ldap2.local:389 (LDAPS/STARTTLS) | cn=reader,dc=company,dc=org / reader123 | Company directory |
+| LDAP2     | ldap2.local:389 (LDAPS/STARTTLS) | cn=reader,dc=example,dc=com / reader123 | Example Corp directory |
 | Valkey    | valkey:6379 (internal)    | N/A               | Session storage and caching |
 
 ## Valkey Session Handling

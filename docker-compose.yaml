@@ -146,7 +146,8 @@ services:
         aliases:
           - passbolt.local
 
-  # LDAP Server 1 - Passbolt structure
+  # LDAP Server 1 - Passbolt Inc. (Historical Computing Pioneers)
+  # Contains: Ada, Betty, Carol, Dame, Edith with @passbolt.com emails
   ldap1:
     image: osixia/openldap:1.5.0
     container_name: ldap1
@@ -174,7 +175,8 @@ services:
         aliases:
           - ldap1.local
 
-  # LDAP Server 2 - Company structure
+  # LDAP Server 2 - Example Corp (Modern Tech Professionals)
+  # Contains: John, Sarah, Michael, Lisa with @example.com emails
   ldap2:
     image: osixia/openldap:1.5.0
     container_name: ldap2
@@ -202,7 +204,9 @@ services:
         aliases:
           - ldap2.local
 
-  # OpenLDAP Meta Backend for LDAP Aggregation
+  # OpenLDAP Meta Backend - LDAP Aggregation Proxy
+  # Combines both LDAP directories into unified namespace: dc=unified,dc=local
+  # Enables Passbolt to sync users from both companies simultaneously
   ldap-meta:
     build:
       context: .

@@ -21,7 +21,7 @@ check_ldap_command() {
 # Function to verify user exists
 verify_user_exists() {
     local username=$1
-    docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
+    docker compose exec ldap1 ldapsearch -x -H ldaps://localhost:636 \
         -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
         -b "cn=$username,ou=users,dc=passbolt,dc=local" \
         "(objectClass=inetOrgPerson)" | grep -q "dn: cn=$username"
@@ -30,7 +30,7 @@ verify_user_exists() {
 
 # Create admin user if it doesn't exist
 echo "Ensuring admin user exists..."
-ADMIN_EXISTS=$(docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
+ADMIN_EXISTS=$(docker compose exec ldap1 ldapsearch -x -H ldaps://localhost:636 \
     -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
     -b "dc=passbolt,dc=local" "(cn=admin)" 2>/dev/null | grep -c "dn: cn=admin" || echo "0")
 
@@ -44,10 +44,10 @@ cn: admin
 description: LDAP administrator
 userPassword: P4ssb0lt
 EOF
-    docker compose cp /tmp/admin_user.ldif ldap:/tmp/admin_user.ldif
-    docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/admin_user.ldif
+    docker compose cp /tmp/admin_user.ldif ldap1:/tmp/admin_user.ldif
+    docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/admin_user.ldif
     check_ldap_command
-    docker compose exec ldap rm /tmp/admin_user.ldif
+    docker compose exec ldap1 rm /tmp/admin_user.ldif
     rm /tmp/admin_user.ldif
     echo "Admin user created successfully"
 else
@@ -67,25 +67,25 @@ objectClass: organizationalUnit
 ou: groups
 EOF
 
-docker compose cp "$LDIF_FILE" ldap:/tmp/ous.ldif
-docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/ous.ldif
+docker compose cp "$LDIF_FILE" ldap1:/tmp/ous.ldif
+docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/ous.ldif
 check_ldap_command
-docker compose exec ldap rm /tmp/ous.ldif
+docker compose exec ldap1 rm /tmp/ous.ldif
 rm "$LDIF_FILE"
 
 # Remove all existing users and groups
 echo "Removing all existing users and groups..."
-for user in $(docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -b "ou=users,dc=passbolt,dc=local" "(objectClass=inetOrgPerson)" | grep "cn: " | cut -d' ' -f2); do
+for user in $(docker compose exec ldap1 ldapsearch -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -b "ou=users,dc=passbolt,dc=local" "(objectClass=inetOrgPerson)" | grep "cn: " | cut -d' ' -f2); do
     echo "Removing user '$user'..."
-    docker compose exec ldap ldapdelete -x -H ldaps://localhost:636 \
+    docker compose exec ldap1 ldapdelete -x -H ldaps://localhost:636 \
         -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
         "cn=$user,ou=users,dc=passbolt,dc=local"
     check_ldap_command
 done
 
-for group in $(docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -b "ou=groups,dc=passbolt,dc=local" "(objectClass=groupOfUniqueNames)" | grep "cn: " | cut -d' ' -f2); do
+for group in $(docker compose exec ldap1 ldapsearch -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -b "ou=groups,dc=passbolt,dc=local" "(objectClass=groupOfUniqueNames)" | grep "cn: " | cut -d' ' -f2); do
     echo "Removing group '$group'..."
-    docker compose exec ldap ldapdelete -x -H ldaps://localhost:636 \
+    docker compose exec ldap1 ldapdelete -x -H ldaps://localhost:636 \
         -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
         "cn=$group,ou=groups,dc=passbolt,dc=local"
     check_ldap_command
@@ -110,10 +110,10 @@ userPassword: betty@passbolt.com
 uid: betty
 employeeNumber: 2
 EOF
-docker compose cp /tmp/betty.ldif ldap:/tmp/betty.ldif
-docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/betty.ldif
+docker compose cp /tmp/betty.ldif ldap1:/tmp/betty.ldif
+docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/betty.ldif
 check_ldap_command
-docker compose exec ldap rm /tmp/betty.ldif
+docker compose exec ldap1 rm /tmp/betty.ldif
 rm /tmp/betty.ldif
 verify_user_exists "betty"
 
@@ -133,10 +133,10 @@ userPassword: carol@passbolt.com
 uid: carol
 employeeNumber: 3
 EOF
-docker compose cp /tmp/carol.ldif ldap:/tmp/carol.ldif
-docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/carol.ldif
+docker compose cp /tmp/carol.ldif ldap1:/tmp/carol.ldif
+docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/carol.ldif
 check_ldap_command
-docker compose exec ldap rm /tmp/carol.ldif
+docker compose exec ldap1 rm /tmp/carol.ldif
 rm /tmp/carol.ldif
 verify_user_exists "carol"
 
@@ -156,10 +156,10 @@ userPassword: dame@passbolt.com
 uid: dame
 employeeNumber: 4
 EOF
-docker compose cp /tmp/dame.ldif ldap:/tmp/dame.ldif
-docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/dame.ldif
+docker compose cp /tmp/dame.ldif ldap1:/tmp/dame.ldif
+docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/dame.ldif
 check_ldap_command
-docker compose exec ldap rm /tmp/dame.ldif
+docker compose exec ldap1 rm /tmp/dame.ldif
 rm /tmp/dame.ldif
 verify_user_exists "dame"
 
@@ -179,10 +179,10 @@ userPassword: edith@passbolt.com
 uid: edith
 employeeNumber: 5
 EOF
-docker compose cp /tmp/edith.ldif ldap:/tmp/edith.ldif
-docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/edith.ldif
+docker compose cp /tmp/edith.ldif ldap1:/tmp/edith.ldif
+docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/edith.ldif
 check_ldap_command
-docker compose exec ldap rm /tmp/edith.ldif
+docker compose exec ldap1 rm /tmp/edith.ldif
 rm /tmp/edith.ldif
 verify_user_exists "edith"
 
@@ -202,10 +202,10 @@ userPassword: ada@passbolt.com
 uid: ada
 employeeNumber: 1
 EOF
-docker compose cp /tmp/ada.ldif ldap:/tmp/ada.ldif
-docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/ada.ldif
+docker compose cp /tmp/ada.ldif ldap1:/tmp/ada.ldif
+docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/ada.ldif
 check_ldap_command
-docker compose exec ldap rm /tmp/ada.ldif
+docker compose exec ldap1 rm /tmp/ada.ldif
 rm /tmp/ada.ldif
 verify_user_exists "ada"
 
@@ -225,10 +225,10 @@ uniqueMember: cn=betty,ou=users,dc=passbolt,dc=local
 uniqueMember: cn=carol,ou=users,dc=passbolt,dc=local
 uniqueMember: cn=dame,ou=users,dc=passbolt,dc=local
 EOF
-docker compose cp /tmp/passbolt.ldif ldap:/tmp/passbolt.ldif
-docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/passbolt.ldif
+docker compose cp /tmp/passbolt.ldif ldap1:/tmp/passbolt.ldif
+docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/passbolt.ldif
 check_ldap_command
-docker compose exec ldap rm /tmp/passbolt.ldif
+docker compose exec ldap1 rm /tmp/passbolt.ldif
 rm /tmp/passbolt.ldif
 
 # Developers group
@@ -243,10 +243,10 @@ uniqueMember: cn=admin,dc=passbolt,dc=local
 uniqueMember: cn=ada,ou=users,dc=passbolt,dc=local
 uniqueMember: cn=dame,ou=users,dc=passbolt,dc=local
 EOF
-docker compose cp /tmp/developers.ldif ldap:/tmp/developers.ldif
-docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/developers.ldif
+docker compose cp /tmp/developers.ldif ldap1:/tmp/developers.ldif
+docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/developers.ldif
 check_ldap_command
-docker compose exec ldap rm /tmp/developers.ldif
+docker compose exec ldap1 rm /tmp/developers.ldif
 rm /tmp/developers.ldif
 
 # Demoteam group
@@ -260,10 +260,10 @@ description: Demo Team
 uniqueMember: cn=betty,ou=users,dc=passbolt,dc=local
 uniqueMember: cn=edith,ou=users,dc=passbolt,dc=local
 EOF
-docker compose cp /tmp/demoteam.ldif ldap:/tmp/demoteam.ldif
-docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/demoteam.ldif
+docker compose cp /tmp/demoteam.ldif ldap1:/tmp/demoteam.ldif
+docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/demoteam.ldif
 check_ldap_command
-docker compose exec ldap rm /tmp/demoteam.ldif
+docker compose exec ldap1 rm /tmp/demoteam.ldif
 rm /tmp/demoteam.ldif
 
 # Admins group
@@ -276,10 +276,10 @@ cn: admins
 description: Administrators
 uniqueMember: cn=admin,dc=passbolt,dc=local
 EOF
-docker compose cp /tmp/admins.ldif ldap:/tmp/admins.ldif
-docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/admins.ldif
+docker compose cp /tmp/admins.ldif ldap1:/tmp/admins.ldif
+docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/admins.ldif
 check_ldap_command
-docker compose exec ldap rm /tmp/admins.ldif
+docker compose exec ldap1 rm /tmp/admins.ldif
 rm /tmp/admins.ldif
 
 echo "LDAP setup complete. You can now proceed with Passbolt configuration."

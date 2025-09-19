@@ -21,7 +21,7 @@ EMAIL=$3
 USERNAME=$(echo "$EMAIL" | cut -d@ -f1)
 
 # Get the highest existing employee number and increment by 1
-NEXT_EMPLOYEE_NUMBER=$(docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -b "dc=passbolt,dc=local" "(objectClass=inetOrgPerson)" employeeNumber | grep "employeeNumber:" | cut -d' ' -f2 | sort -n | tail -1)
+NEXT_EMPLOYEE_NUMBER=$(docker compose exec ldap1 ldapsearch -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -b "dc=passbolt,dc=local" "(objectClass=inetOrgPerson)" employeeNumber | grep "employeeNumber:" | cut -d' ' -f2 | sort -n | tail -1)
 NEXT_EMPLOYEE_NUMBER=$((NEXT_EMPLOYEE_NUMBER + 1))
 
 # Create LDIF for the new user
@@ -42,7 +42,7 @@ employeeNumber: $NEXT_EMPLOYEE_NUMBER
 EOF
 
 # Add the LDIF to LDAP
-docker compose cp "$LDIF_FILE" ldap:/tmp/"$USERNAME.ldif"
+docker compose cp "$LDIF_FILE" ldap1:/tmp/"$USERNAME.ldif"
 if [ $? -ne 0 ]; then
     echo "Error: Failed to copy LDIF file to container"
     rm "$LDIF_FILE"
@@ -50,16 +50,16 @@ if [ $? -ne 0 ]; then
 fi
 
 # Add the user to LDAP
-docker compose exec ldap ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/"$USERNAME.ldif"
+docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/"$USERNAME.ldif"
 if [ $? -ne 0 ]; then
     echo "Error: Failed to add user to LDAP"
-    docker compose exec ldap rm /tmp/"$USERNAME.ldif"
+    docker compose exec ldap1 rm /tmp/"$USERNAME.ldif"
     rm "$LDIF_FILE"
     exit 1
 fi
 
 # Clean up LDIF files
-docker compose exec ldap rm /tmp/"$USERNAME.ldif"
+docker compose exec ldap1 rm /tmp/"$USERNAME.ldif"
 rm "$LDIF_FILE"
 
 echo "User '$EMAIL' added to LDAP"
