@@ -23,7 +23,7 @@ get_username() {
 verify_user_exists() {
     local email=$1
     local username=$(get_username "$email")
-    docker compose exec ldap ldapsearch -x -H ldap://localhost \
+    docker compose exec ldap1 ldapsearch -x -H ldap://localhost \
         -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
         -b "dc=passbolt,dc=local" "(cn=$username)" | grep -q "dn: cn=$username,ou=users,dc=passbolt,dc=local"
     return $?
@@ -34,7 +34,7 @@ verify_user_in_group() {
     local email=$1
     local groupname=$2
     local username=$(get_username "$email")
-    docker compose exec ldap ldapsearch -x -H ldap://localhost \
+    docker compose exec ldap1 ldapsearch -x -H ldap://localhost \
         -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
         -b "dc=passbolt,dc=local" "(cn=$groupname)" | grep -q "uniqueMember: cn=$username,ou=users,dc=passbolt,dc=local"
     return $?
@@ -51,7 +51,7 @@ add: uniqueMember
 uniqueMember: cn=admin,dc=passbolt,dc=local
 EOF
     docker compose cp "$ldif_file" "ldap:/tmp/add_admin_to_${groupname}.ldif"
-    docker compose exec ldap ldapmodify -x -H ldap://localhost \
+    docker compose exec ldap1 ldapmodify -x -H ldap://localhost \
         -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
         -f "/tmp/add_admin_to_${groupname}.ldif"
     rm -f "$ldif_file"
@@ -97,7 +97,7 @@ fi
 echo "Test 3: Adding admin to testgroup..."
 if add_admin_to_group "testgroup"; then
     sleep 1  # Give LDAP time to process the change
-    if docker compose exec ldap ldapsearch -x -H ldap://localhost \
+    if docker compose exec ldap1 ldapsearch -x -H ldap://localhost \
         -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
         -b "dc=passbolt,dc=local" "(cn=testgroup)" | grep -q "uniqueMember: cn=admin,dc=passbolt,dc=local"; then
         print_result 0 "Admin added to group successfully"
@@ -125,7 +125,7 @@ fi
 echo "Test 5: Removing testgroup..."
 if "$LDAP_SCRIPTS_DIR/groups/remove.sh" "testgroup"; then
     sleep 1  # Give LDAP time to process the change
-    if ! docker compose exec ldap ldapsearch -x -H ldap://localhost \
+    if ! docker compose exec ldap1 ldapsearch -x -H ldap://localhost \
         -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
         -b "dc=passbolt,dc=local" "(cn=testgroup)" | grep -q "dn: cn=testgroup,ou=groups,dc=passbolt,dc=local"; then
         print_result 0 "Test group removed successfully"

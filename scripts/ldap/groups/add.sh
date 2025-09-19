@@ -8,7 +8,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 cd "$ROOT_DIR" || { echo "Error: Failed to change to root directory"; exit 1; }
 
 # LDAP Configuration
-LDAP_URL="ldap://ldap.local:389"
+LDAP_URL="ldap://localhost:389"
 LDAP_ADMIN_DN="cn=admin,dc=passbolt,dc=local"
 LDAP_ADMIN_PASSWORD="P4ssb0lt"
 LDAP_BASE_DN="dc=passbolt,dc=local"
@@ -44,7 +44,7 @@ fi
 
 # Check if group already exists
 log "Checking if group '$GROUPNAME' already exists..."
-if docker compose exec ldap ldapsearch -x -H "$LDAP_URL" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -b "$LDAP_BASE_DN" "(cn=$GROUPNAME)" | grep -q "dn: cn=$GROUPNAME"; then
+if docker compose exec ldap1 ldapsearch -x -H "$LDAP_URL" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -b "$LDAP_BASE_DN" "(cn=$GROUPNAME)" | grep -q "dn: cn=$GROUPNAME"; then
     log "Group '$GROUPNAME' already exists in LDAP"
     exit 0
 fi
@@ -63,7 +63,7 @@ EOF
 # Add initial member if provided
 if [ ! -z "$EMAIL" ]; then
     log "Verifying user '$EMAIL' exists..."
-    USER_DN=$(docker compose exec ldap ldapsearch -x -H "$LDAP_URL" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -b "$LDAP_BASE_DN" "(mail=$EMAIL)" | grep "^dn: " | cut -d' ' -f2-)
+    USER_DN=$(docker compose exec ldap1 ldapsearch -x -H "$LDAP_URL" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -b "$LDAP_BASE_DN" "(mail=$EMAIL)" | grep "^dn: " | cut -d' ' -f2-)
     if [ -z "$USER_DN" ]; then
         log "ERROR: User '$EMAIL' does not exist in LDAP"
         rm "$LDIF_FILE"
@@ -87,24 +87,24 @@ fi
 
 # Add the group to LDAP
 log "Adding group to LDAP..."
-docker compose exec ldap ldapadd -x -H "$LDAP_URL" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/"$GROUPNAME.ldif"
+docker compose exec ldap1 ldapadd -x -H "$LDAP_URL" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/"$GROUPNAME.ldif"
 if [ $? -ne 0 ]; then
     log "ERROR: Failed to add group to LDAP"
-    docker compose exec ldap rm /tmp/"$GROUPNAME.ldif"
+    docker compose exec ldap1 rm /tmp/"$GROUPNAME.ldif"
     rm "$LDIF_FILE"
     exit 1
 fi
 
 # Verify group was created correctly
 log "Verifying group creation..."
-if ! docker compose exec ldap ldapsearch -x -H "$LDAP_URL" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -b "$LDAP_BASE_DN" "(cn=$GROUPNAME)" | grep -q "dn: cn=$GROUPNAME"; then
+if ! docker compose exec ldap1 ldapsearch -x -H "$LDAP_URL" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -b "$LDAP_BASE_DN" "(cn=$GROUPNAME)" | grep -q "dn: cn=$GROUPNAME"; then
     log "ERROR: Group verification failed - group not found after creation"
     exit 1
 fi
 
 # Clean up LDIF files
 log "Cleaning up temporary files..."
-docker compose exec ldap rm /tmp/"$GROUPNAME.ldif"
+docker compose exec ldap1 rm /tmp/"$GROUPNAME.ldif"
 rm "$LDIF_FILE"
 
 if [ ! -z "$EMAIL" ]; then
@@ -115,4 +115,4 @@ fi
 
 # Final verification
 log "Final group details:"
-docker compose exec ldap ldapsearch -x -H "$LDAP_URL" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -b "$LDAP_BASE_DN" "(cn=$GROUPNAME)" | grep -E "^(cn|description|member):" 
+docker compose exec ldap1 ldapsearch -x -H "$LDAP_URL" -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -b "$LDAP_BASE_DN" "(cn=$GROUPNAME)" | grep -E "^(cn|description|member):" 

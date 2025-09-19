@@ -1,5 +1,9 @@
 FROM debian:trixie-slim
 
+# OpenLDAP Meta Backend Container for LDAP Aggregation
+# Provides unified LDAP interface for multiple backend directories
+# Used in Passbolt enterprise merger demonstration
+
 # Install OpenLDAP and dependencies
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -20,7 +24,8 @@ RUN mkdir -p /root/openldap_proxy/data/certs && \
 COPY config/ldap-meta/slapd.conf /etc/ldap/slapd.conf
 COPY config/ldap-meta/entrypoint.sh /root/openldap_proxy/entrypoint.sh
 
-# Generate certificates
+# Generate self-signed TLS certificates for demo
+# In production, replace with proper CA-signed certificates
 RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout /root/openldap_proxy/data/certs/ldap.key \
     -out /root/openldap_proxy/data/certs/ldap.crt \
@@ -32,5 +37,5 @@ RUN chmod +x /root/openldap_proxy/entrypoint.sh
 # Expose LDAP ports
 EXPOSE 389 636
 
-# Start the proven OpenLDAP meta backend
+# Start OpenLDAP meta backend for LDAP aggregation
 ENTRYPOINT ["/root/openldap_proxy/entrypoint.sh"]

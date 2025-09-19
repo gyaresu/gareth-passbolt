@@ -1,7 +1,13 @@
 #!/bin/bash
 
-# OpenLDAP Meta Backend Entrypoint
+# OpenLDAP Meta Backend Entrypoint Script
 # Starts meta backend proxy for LDAP result aggregation
+# 
+# This script:
+# - Waits for backend LDAP servers (ldap1, ldap2) to be ready
+# - Creates necessary runtime directories
+# - Starts slapd with meta backend configuration
+# - Provides unified LDAP interface for Passbolt synchronization
 
 set -e
 

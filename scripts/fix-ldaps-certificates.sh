@@ -8,10 +8,10 @@ set -e
 
 echo "Fixing LDAPS certificate bundle..."
 
-# Check if LDAP container is running
-if ! docker compose ps ldap | grep -q "Up"; then
-    echo "Error: LDAP container is not running"
-    echo "Please start the LDAP container first: docker compose up -d ldap"
+# Check if LDAP meta proxy is running
+if ! docker compose ps ldap-meta | grep -q "Up"; then
+    echo "Error: LDAP meta proxy is not running"
+    echo "Please start the LDAP aggregation setup first: docker compose up -d ldap-meta"
     exit 1
 fi
 
@@ -19,18 +19,18 @@ fi
 echo "Waiting for LDAP server to be ready..."
 sleep 30
 
-# Extract the server certificate from the LDAP container
-echo "Extracting server certificate from LDAP container..."
-docker compose exec ldap cat /container/service/slapd/assets/certs/ldap.crt > certs/ldap_server.crt
+# Extract the server certificate from the LDAP meta proxy
+echo "Extracting server certificate from LDAP meta proxy..."
+docker compose exec ldap-meta cat /root/openldap_proxy/data/certs/ldap.crt > certs/ldap_server.crt
 
-# Extract the CA certificate from the LDAP container
-echo "Extracting CA certificate from LDAP container..."
-docker compose exec ldap cat /container/service/slapd/assets/certs/ca.crt > certs/ldap_ca.crt
+# For aggregation setup, we use the meta proxy certificate as both server and CA
+echo "Using meta proxy certificate as CA certificate..."
+cp certs/ldap_server.crt certs/ldap_ca.crt
 
 # Check if we got certificates
 if [ ! -s "certs/ldap_server.crt" ] || [ ! -s "certs/ldap_ca.crt" ]; then
-    echo "Error: Failed to retrieve LDAP certificates from container"
-    echo "Make sure the LDAP container is running and accessible"
+    echo "Error: Failed to retrieve LDAP certificates from meta proxy"
+    echo "Make sure the LDAP meta proxy is running and accessible"
     exit 1
 fi
 
