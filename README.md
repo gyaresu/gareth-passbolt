@@ -5,13 +5,12 @@
 ## What This Demonstrates
 
 - Passbolt Pro with OIDC SSO integration (Keycloak over HTTPS)
-- LDAPS (implicit TLS) "ldap://ssl" and port 636 in Web UI
-- LDAP with STARTTLS (explicit TLS) "ldap://tls" and 389 in Web UI
-- SMTPS (implicit TLS) for secure email communication
-- HTTPS (implicit TLS) for Passbolt and Keycloak web interfaces
-- Valkey (Redis-compatible) session handling for improved performance and scalability
-- Testing environment with email, database, and user management
-- Certificate automation for development and testing scenarios
+- LDAP result aggregation from multiple directory servers using OpenLDAP meta backend
+- LDAPS (implicit TLS) and STARTTLS (explicit TLS) for secure LDAP connections
+- SMTPS for secure email communication
+- Valkey session handling for improved performance
+- Certificate automation for development and testing
+- Multi-directory user synchronization for enterprise environments
 
 ## Prerequisites
 
@@ -23,15 +22,15 @@
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [LDAP Aggregation](#ldap-aggregation)
 - [Services Overview](#services-overview)
-- [Valkey Session Handling](#valkey-session-handling)
 - [LDAPS Configuration](#ldaps-configuration)
+- [Valkey Session Handling](#valkey-session-handling)
 - [Keycloak SSO Configuration](#keycloak-sso-configuration)
 - [SMTP Configuration](#smtp-configuration)
 - [User and Group Management](#user-and-group-management)
 - [Testing and Verification](#testing-and-verification)
 - [Troubleshooting](#troubleshooting)
-- [Repository Structure](#repository-structure)
 
 ## Quick Start
 
@@ -72,7 +71,7 @@ This script will:
    chmod +x scripts/ldap/*/*.sh scripts/tests/*/*.sh
    ```
 
-5. Start the environment:
+5. Start the environment (LDAP aggregation is now default):
    ```bash
    docker compose up -d
    ```
@@ -100,6 +99,49 @@ This script will:
 
 > Demo Credentials: All passwords and credentials in this repository are for demonstration purposes only. In production, use strong, unique credentials and proper certificate authorities.
 
+## LDAP Aggregation
+
+This setup demonstrates LDAP result aggregation using OpenLDAP meta backend. Multiple LDAP directories are combined into a single unified interface for Passbolt synchronization.
+
+### Configuration
+
+LDAP aggregation is now the default setup:
+```bash
+docker compose up -d
+```
+
+For single LDAP directory (basic demo):
+```bash
+docker compose -f docker-compose.single-ldap.yaml up -d
+```
+
+### Architecture
+
+- **ldap-meta**: OpenLDAP meta backend proxy (Debian 13, OpenLDAP 2.6.10)
+- **ldap1**: Passbolt directory structure (dc=passbolt,dc=local)
+- **ldap2**: Company directory structure (dc=company,dc=org)
+
+### Unified Namespace
+
+- **Endpoint**: ldap-meta.local:3389
+- **Base DN**: dc=unified,dc=local
+- **Bind DN**: cn=admin,dc=unified,dc=local
+- **Password**: secret
+
+### Backend Mapping
+
+- **Passbolt users**: dc=passbolt,dc=unified,dc=local → dc=passbolt,dc=local
+- **Company users**: dc=company,dc=unified,dc=local → dc=company,dc=org
+
+### Passbolt Configuration
+
+Configure Passbolt LDAP settings to use the aggregated endpoint:
+- Server: ldap-meta.local
+- Port: 3389
+- Base DN: dc=unified,dc=local
+- Bind DN: cn=admin,dc=unified,dc=local
+- Password: secret
+
 ## Services Overview
 
 | Service   | URL                       | Credentials        | Purpose |
@@ -107,8 +149,9 @@ This script will:
 | Passbolt  | https://passbolt.local    | Created during setup | Main application |
 | Keycloak  | https://keycloak.local:8443 | admin / admin    | SSO provider |
 | SMTP4Dev  | http://smtp.local:5050    | N/A               | Email testing |
-| LDAP      | ldap.local:636 (LDAPS (implicit TLS))   | cn=readonly,dc=passbolt,dc=local / readonly | User directory (read-only sync) |
-| LDAP      | ldap.local:389 (LDAP with STARTTLS) | cn=admin,dc=passbolt,dc=local / P4ssb0lt | User directory (admin access) |
+| LDAP Meta | ldap-meta.local:3389 (LDAP), :3636 (LDAPS) | cn=admin,dc=unified,dc=local / secret | LDAP aggregation proxy |
+| LDAP1     | ldap1.local:389 (LDAPS/STARTTLS) | cn=readonly,dc=passbolt,dc=local / readonly | Passbolt directory |
+| LDAP2     | ldap2.local:389 (LDAPS/STARTTLS) | cn=reader,dc=company,dc=org / reader123 | Company directory |
 | Valkey    | valkey:6379 (internal)    | N/A               | Session storage and caching |
 
 ## Valkey Session Handling

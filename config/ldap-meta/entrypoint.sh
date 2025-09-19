@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # OpenLDAP Meta Backend Entrypoint
-# Aggregates multiple LDAP backends into unified namespace
+# Starts meta backend proxy for LDAP result aggregation
 
 set -e
 
