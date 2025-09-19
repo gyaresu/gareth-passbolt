@@ -1,6 +1,6 @@
-# Passbolt Pro Demonstration Stack with LDAP Aggregation
-# Default setup aggregates multiple LDAP directories for unified synchronization
-# Use: docker compose up -d
+# Passbolt Pro Demonstration Stack - Single LDAP Directory
+# Basic setup with single LDAP directory (educational demo)
+# Use: docker compose -f docker-compose.single-ldap.yaml up -d
 
 services:
   db:
@@ -43,76 +43,80 @@ services:
     depends_on:
       - db
     environment:
+      # Development credentials
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      # Development settings
       KC_HOSTNAME: keycloak.local
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_HTTPS: "false"
       KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/server.crt.pem
       KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/server.key.pem
+      # Database configuration
       KC_DB: mariadb
-      KC_DB_URL: jdbc:mariadb://db:3306/keycloak
-      KC_DB_USERNAME: root
-      KC_DB_PASSWORD: rootpassword
+      KC_DB_URL_HOST: db
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: passbolt
+      KC_DB_PASSWORD: P4ssb0lt
+    command: 
+      - start-dev
     ports:
-      - '8081:8080'
-      - '8443:8443'
-      - '8787:8787'
+      - 8081:8080
+      - 8787:8787
+      - 8443:8443
     volumes:
-      - ./keys/keycloak.crt:/opt/keycloak/conf/server.crt.pem:ro
-      - ./keys/keycloak.key:/opt/keycloak/conf/server.key.pem:ro
-    command: ["start-dev"]
+      - keycloak_data:/opt/keycloak/data
+      - ./keys/keycloak-chain.crt:/opt/keycloak/conf/server.crt.pem
+      - ./keys/keycloak.key:/opt/keycloak/conf/server.key.pem
     networks:
       default:
         aliases:
           - keycloak.local
 
-  valkey:
-    image: valkey/valkey:9.0-trixie
-    container_name: valkey
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - valkey_data:/data
-    command: valkey-server --appendonly yes
-
   passbolt:
+    build:
+      context: .
+      dockerfile: Dockerfile.passbolt
     image: passbolt/passbolt:latest-pro
     restart: unless-stopped
     depends_on:
       - db
       - keycloak
       - valkey
-      - ldap-meta
     environment:
+      # Core Application Configuration
       APP_FULL_BASE_URL: https://passbolt.local
       DATASOURCES_DEFAULT_HOST: "db"
       DATASOURCES_DEFAULT_USERNAME: "passbolt"
       DATASOURCES_DEFAULT_PASSWORD: "P4ssb0lt"
       DATASOURCES_DEFAULT_DATABASE: "passbolt"
       
+      # Email Configuration
       EMAIL_TRANSPORT_DEFAULT_HOST: "ssl://smtp.local"
       EMAIL_TRANSPORT_DEFAULT_PORT: 25
       EMAIL_TRANSPORT_DEFAULT_USERNAME: ""
       EMAIL_TRANSPORT_DEFAULT_PASSWORD: ""
       EMAIL_DEFAULT_FROM: "admin@passbolt.com"
       
+      # SMTP Settings Plugin (SMTPS - implicit TLS, SSL verification settings)
       PASSBOLT_PLUGINS_SMTP_SETTINGS_SECURITY_SSL_VERIFY_PEER: true
       PASSBOLT_PLUGINS_SMTP_SETTINGS_SECURITY_SSL_VERIFY_PEER_NAME: true
       PASSBOLT_PLUGINS_SMTP_SETTINGS_SECURITY_SSL_ALLOW_SELF_SIGNED: true
       PASSBOLT_PLUGINS_SMTP_SETTINGS_SECURITY_SSL_CAFILE: "/etc/ssl/certs/smtp_local.crt"
       
-      PASSBOLT_PLUGINS_DIRECTORY_SYNC_ENABLED: "true"
+      # Directory Sync Plugin (LDAPS and LDAP with STARTTLS both enabled)
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_ENABLED: "true" # Note: not functional. Hard coded 'false', see task PB-45139 for task)
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_ENABLED: "true"
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_VERIFY_PEER: "true"
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_CAFILE: "/etc/ssl/certs/ldaps_bundle.crt"
       
+      # SSO Plugin
       PASSBOLT_PLUGINS_SSO_ENABLED: "true"
       PASSBOLT_PLUGINS_SSO_PROVIDER_OAUTH2_ENABLED: "true"
       PASSBOLT_SECURITY_SSO_SSL_VERIFY: "true"
 
+      # Valkey sessions
       CACHE_CAKECORE_CLASSNAME: Cake\Cache\Engine\RedisEngine
       CACHE_CAKECORE_HOST: valkey
       CACHE_CAKECORE_PORT: 6379
@@ -129,7 +133,7 @@ services:
       - ./keys/ca.crt:/usr/local/share/ca-certificates/keycloak.crt
       - ./smtp4dev/certs/tls.crt:/etc/ssl/certs/smtp_local.crt:ro
       - ./certs/ldaps_bundle.crt:/etc/ssl/certs/ldaps_bundle.crt:ro
-      - ./certs/ldaps_bundle.crt:/usr/local/share/ca-certificates/ldap-ca.crt:ro
+      - ./certs/ldaps_bundle.crt:/usr/local/share/ca-certificates/ldap-ca.crt:ro # added after image updates
       - ./subscription_key.txt:/etc/passbolt/subscription_key.txt:ro
     command:
       - /bin/bash
@@ -146,11 +150,10 @@ services:
         aliases:
           - passbolt.local
 
-  # LDAP Server 1 - Passbolt structure
-  ldap1:
+  ldap:
     image: osixia/openldap:1.5.0
-    container_name: ldap1
-    hostname: ldap1.local
+    container_name: ldap
+    hostname: ldap.local
     restart: unless-stopped
     environment:
       LDAP_ORGANISATION: "Passbolt"
@@ -162,64 +165,41 @@ services:
       LDAP_READONLY_USER_PASSWORD: "readonly"
       LDAP_TLS: "true"
       LDAP_TLS_VERIFY_CLIENT: "never"
+
+      # Initial data setup
       LDAP_BASE_DN: "dc=passbolt,dc=local"
       LDAP_USERS_DN: "ou=users,dc=passbolt,dc=local"
       LDAP_GROUPS_DN: "ou=groups,dc=passbolt,dc=local"
-    volumes:
-      - ldap1_data:/var/lib/ldap
-      - ldap1_config:/etc/ldap/slapd.d
-      - ldap1_certs:/container/service/slapd/assets/certs
-    networks:
-      default:
-        aliases:
-          - ldap1.local
-
-  # LDAP Server 2 - Company structure
-  ldap2:
-    image: osixia/openldap:1.5.0
-    container_name: ldap2
-    hostname: ldap2.local
-    restart: unless-stopped
-    environment:
-      LDAP_ORGANISATION: "Example Corp"
-      LDAP_DOMAIN: "example.com"
-      LDAP_ADMIN_PASSWORD: "Ex4mple123"
-      LDAP_CONFIG_PASSWORD: "Ex4mple123"
-      LDAP_READONLY_USER: "true"
-      LDAP_READONLY_USER_USERNAME: "reader"
-      LDAP_READONLY_USER_PASSWORD: "reader123"
-      LDAP_TLS: "true"
-      LDAP_TLS_VERIFY_CLIENT: "never"
-      LDAP_BASE_DN: "dc=example,dc=com"
-      LDAP_USERS_DN: "ou=people,dc=example,dc=com"
-      LDAP_GROUPS_DN: "ou=teams,dc=example,dc=com"
-    volumes:
-      - ldap2_data:/var/lib/ldap
-      - ldap2_config:/etc/ldap/slapd.d
-      - ldap2_certs:/container/service/slapd/assets/certs
-    networks:
-      default:
-        aliases:
-          - ldap2.local
-
-  # OpenLDAP Meta Backend for LDAP Aggregation
-  ldap-meta:
-    build:
-      context: .
-      dockerfile: Dockerfile.ldap-meta
-    container_name: ldap-meta
-    hostname: ldap-meta.local
-    restart: unless-stopped
-    depends_on:
-      - ldap1
-      - ldap2
+      LDAP_ADMIN_USER: "ada"
+      LDAP_ADMIN_EMAIL: "ada@passbolt.com"
+      LDAP_ADMIN_FIRSTNAME: "Ada"
+      LDAP_ADMIN_LASTNAME: "Ada"
+      LDAP_ADMIN_UID: "ada"
+      LDAP_ADMIN_GIVEN_NAME: "Ada"
+      LDAP_ADMIN_SN: "Ada"
+      LDAP_ADMIN_CN: "ada"
+      LDAP_ADMIN_DN: "cn=ada,ou=users,dc=passbolt,dc=local"
     ports:
-      - "3389:389"
-      - "3636:636"
+      - "389:389"
+      - "636:636"
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+      - ldap_certs:/container/service/slapd/assets/certs
     networks:
       default:
         aliases:
-          - ldap-meta.local
+          - ldap.local
+  valkey:
+    image: valkey/valkey:9.0-trixie
+    container_name: valkey
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey_data:/data
+    command: valkey-server --appendonly yes
+    
 
 volumes:
   database_volume:
@@ -228,19 +208,15 @@ volumes:
     name: ${COMPOSE_PROJECT_NAME}_gpg_volume
   jwt_volume:
     name: ${COMPOSE_PROJECT_NAME}_jwt_volume
+  keycloak_data:
+    name: ${COMPOSE_PROJECT_NAME}_keycloak_data
   smtp4dev_data:
     name: ${COMPOSE_PROJECT_NAME}_smtp4dev_data
+  ldap_data:
+    name: ${COMPOSE_PROJECT_NAME}_ldap_data
+  ldap_config:
+    name: ${COMPOSE_PROJECT_NAME}_ldap_config
+  ldap_certs:
+    name: ${COMPOSE_PROJECT_NAME}_ldap_certs
   valkey_data:
     name: ${COMPOSE_PROJECT_NAME}_valkey_data
-  ldap1_data:
-    name: ${COMPOSE_PROJECT_NAME}_ldap1_data
-  ldap1_config:
-    name: ${COMPOSE_PROJECT_NAME}_ldap1_config
-  ldap1_certs:
-    name: ${COMPOSE_PROJECT_NAME}_ldap1_certs
-  ldap2_data:
-    name: ${COMPOSE_PROJECT_NAME}_ldap2_data
-  ldap2_config:
-    name: ${COMPOSE_PROJECT_NAME}_ldap2_config
-  ldap2_certs:
-    name: ${COMPOSE_PROJECT_NAME}_ldap2_certs

@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM debian:trixie-slim
 
 # Install OpenLDAP and dependencies
 RUN apt-get update && \
@@ -6,7 +6,7 @@ RUN apt-get update && \
     slapd \
     ldap-utils \
     openssl \
-    netcat \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf /etc/ldap/slapd.d
 
