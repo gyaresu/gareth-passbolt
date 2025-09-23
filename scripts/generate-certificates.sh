@@ -15,13 +15,13 @@ mkdir -p "$CONFIG_SSL_DIR"
 # Generate Root CA Certificate
 echo "Generating Root CA certificate..."
 openssl req -x509 -sha256 -days 3650 -newkey rsa:2048 \
-  -subj "/C=LU/ST=Luxembourg/L=Esch-Sur-Alzette/O=Passbolt CA/OU=Passbolt CA/CN=Passbolt Root CA" \
+  -subj "/C=AU/ST=Tasmania/L=Hobart/O=Passbolt Asia Pacific/OU=Passbolt CA/CN=Passbolt Root CA" \
   -nodes -keyout "$KEYS_DIR/rootCA.key" -out "$KEYS_DIR/rootCA.crt"
 
 # Generate Keycloak Certificate
 echo "Generating Keycloak certificate..."
 openssl req -newkey rsa:2048 \
-  -subj "/C=LU/ST=Luxembourg/L=Esch-Sur-Alzette/O=Passbolt/OU=Keycloak/CN=keycloak.local" \
+  -subj "/C=AU/ST=Tasmania/L=Hobart/O=Passbolt Asia Pacific/OU=Keycloak/CN=keycloak.local" \
   -addext "subjectAltName = DNS:keycloak.local" \
   -nodes -keyout "$KEYS_DIR/keycloak.key" -out "$KEYS_DIR/keycloak.csr"
 
@@ -45,8 +45,36 @@ openssl x509 -req -CA "$KEYS_DIR/rootCA.crt" -CAkey "$KEYS_DIR/rootCA.key" \
 
 # LDAP Certificate generation removed - now using LDAP server's own certificates
 
+# Generate Passbolt Certificate
+echo "Generating Passbolt certificate..."
+openssl req -newkey rsa:2048 \
+  -subj "/C=AU/ST=Tasmania/L=Hobart/O=Passbolt Asia Pacific/OU=Department of Digital Shenanigans/CN=passbolt.local" \
+  -addext "subjectAltName = DNS:passbolt.local" \
+  -nodes -keyout "$KEYS_DIR/passbolt.key" -out "$KEYS_DIR/passbolt.csr"
+
+# Create SSL config file for Passbolt
+cat > "$CONFIG_SSL_DIR/passbolt_ssl_config.txt" << EOF
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = passbolt.local
+EOF
+
+# Copy the config file to keys directory for backward compatibility
+cp "$CONFIG_SSL_DIR/passbolt_ssl_config.txt" "$KEYS_DIR/"
+
+# Sign Passbolt Certificate with Root CA
+openssl x509 -req -CA "$KEYS_DIR/rootCA.crt" -CAkey "$KEYS_DIR/rootCA.key" \
+  -in "$KEYS_DIR/passbolt.csr" -out "$KEYS_DIR/passbolt.crt" -days 365 \
+  -CAcreateserial -extfile "$CONFIG_SSL_DIR/passbolt_ssl_config.txt"
+
 # Create a proper chain certificate for Keycloak
 cat "$KEYS_DIR/keycloak.crt" "$KEYS_DIR/rootCA.crt" > "$KEYS_DIR/keycloak-chain.crt"
+
+# Create a proper chain certificate for Passbolt
+cat "$KEYS_DIR/passbolt.crt" "$KEYS_DIR/rootCA.crt" > "$KEYS_DIR/passbolt-chain.crt"
 
 # LDAP chain certificate creation removed - using LDAP server's own certificates
 
@@ -58,4 +86,7 @@ echo "Root CA: $KEYS_DIR/rootCA.crt"
 echo "Keycloak cert: $KEYS_DIR/keycloak.crt"
 echo "Keycloak key: $KEYS_DIR/keycloak.key"
 echo "Keycloak chain: $KEYS_DIR/keycloak-chain.crt"
+echo "Passbolt cert: $KEYS_DIR/passbolt.crt"
+echo "Passbolt key: $KEYS_DIR/passbolt.key"
+echo "Passbolt chain: $KEYS_DIR/passbolt-chain.crt"
 echo "Note: LDAP certificates are now downloaded from the LDAP server automatically" 

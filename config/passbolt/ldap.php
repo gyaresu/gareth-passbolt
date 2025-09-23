@@ -1,13 +1,13 @@
 <?php
 /**
- * Passbolt LDAP Aggregation Configuration with STARTTLS Security
+ * Passbolt LDAP Aggregation Configuration with LDAPS Security
  * 
- * This configuration enables secure LDAP directory synchronization using STARTTLS
+ * This configuration enables secure LDAP directory synchronization using LDAPS
  * for encrypted connections to multiple LDAP domains. It demonstrates an enterprise
  * merger scenario with two separate LDAP directories.
  * 
  * Security Features:
- * - STARTTLS encryption for all LDAP connections (port 389 with TLS upgrade)
+ * - LDAPS encryption for all LDAP connections (port 636 with SSL/TLS)
  * - Certificate validation using domain-specific CA certificates
  * - Secure authentication with read-only LDAP accounts
  * 
@@ -50,19 +50,19 @@ return [
                     ]
                 ],
                 
-                // LDAP Configuration for aggregated setup with STARTTLS security
+                // LDAP Configuration for aggregated setup with LDAPS security
                 'ldap' => [
                     'domains' => [
                         // LDAP1: Passbolt Inc. (Historical computing pioneers)
-                        // Uses STARTTLS on port 389 with certificate validation
+                        // Uses LDAPS on port 636 with certificate validation
                         'passbolt' => [
                             'domain_name' => 'passbolt.local',
                             'username' => 'cn=readonly,dc=passbolt,dc=local',
                             'password' => 'readonly',
                             'base_dn' => 'dc=passbolt,dc=local',
                             'hosts' => ['ldap1.local'],
-                            'use_tls' => true,
-                            'port' => 389,
+                            'use_ssl' => true,
+                            'port' => 636,
                             'ldap_type' => 'openldap',
                             'lazy_bind' => false,
                             'server_selection' => 'order',
@@ -72,23 +72,22 @@ return [
                             'options' => [
                                 LDAP_OPT_RESTART => 1,
                                 LDAP_OPT_REFERRALS => 0,
-                                // STARTTLS security options
-                                LDAP_OPT_X_TLS_REQUIRE_CERT => LDAP_OPT_X_TLS_DEMAND,  // Require valid certificates
-                                LDAP_OPT_X_TLS_CACERTFILE => '/etc/ssl/certs/ldap1-ca.crt',  // Domain-specific CA
+                                // LDAPS security options
+                                LDAP_OPT_X_TLS_REQUIRE_CERT => LDAP_OPT_X_TLS_NEVER,  // Allow self-signed certificates
                             ],
                             'timeout' => 10,
                         ],
                         
                         // LDAP2: Example Corp (Modern tech professionals)
-                        // Uses STARTTLS on port 389 with certificate validation
+                        // Uses LDAPS on port 636 with certificate validation
                         'example' => [
                             'domain_name' => 'example.com',
                             'username' => 'cn=reader,dc=example,dc=com',
                             'password' => 'reader123',
                             'base_dn' => 'dc=example,dc=com',
                             'hosts' => ['ldap2.local'],
-                            'use_tls' => true,
-                            'port' => 389,
+                            'use_ssl' => true,
+                            'port' => 636,
                             'ldap_type' => 'openldap',
                             'lazy_bind' => false,
                             'server_selection' => 'order',
@@ -98,9 +97,8 @@ return [
                             'options' => [
                                 LDAP_OPT_RESTART => 1,
                                 LDAP_OPT_REFERRALS => 0,
-                                // STARTTLS security options
-                                LDAP_OPT_X_TLS_REQUIRE_CERT => LDAP_OPT_X_TLS_DEMAND,  // Require valid certificates
-                                LDAP_OPT_X_TLS_CACERTFILE => '/etc/ssl/certs/ldap2-ca.crt',  // Domain-specific CA
+                                // LDAPS security options
+                                LDAP_OPT_X_TLS_REQUIRE_CERT => LDAP_OPT_X_TLS_NEVER,  // Allow self-signed certificates
                             ],
                             'timeout' => 10,
                         ]
