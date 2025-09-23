@@ -130,9 +130,15 @@ services:
       - ./config/nginx/nginx-passbolt.conf:/etc/nginx/sites-enabled/nginx-passbolt.conf
       - ./config/passbolt/ldap.php:/etc/passbolt/ldap.php:ro
       - ./keys/ca.crt:/usr/local/share/ca-certificates/keycloak.crt
+      - ./keys/passbolt.crt:/etc/ssl/certs/certificate.crt:ro
+      - ./keys/passbolt.key:/etc/ssl/certs/certificate.key:ro
       - ./smtp4dev/certs/tls.crt:/etc/ssl/certs/smtp_local.crt:ro
       - ./certs/ldaps_bundle.crt:/etc/ssl/certs/ldaps_bundle.crt:ro
       - ./certs/ldaps_bundle.crt:/usr/local/share/ca-certificates/ldap-ca.crt:ro
+      - ./keys/ldap1-ca.crt:/etc/ssl/certs/ldap1-ca.crt:ro
+      - ./keys/ldap1-ca.crt:/usr/local/share/ca-certificates/ldap1-ca.crt:ro
+      - ./keys/ldap2-ca.crt:/etc/ssl/certs/ldap2-ca.crt:ro
+      - ./keys/ldap2-ca.crt:/usr/local/share/ca-certificates/ldap2-ca.crt:ro
       - ./subscription_key.txt:/etc/passbolt/subscription_key.txt:ro
     command:
       - /bin/bash

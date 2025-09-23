@@ -6,7 +6,7 @@
 
 - Passbolt Pro with OIDC SSO integration (Keycloak over HTTPS)
 - LDAP result aggregation from multiple directory servers using OpenLDAP meta backend
-- LDAPS (implicit TLS) and STARTTLS (explicit TLS) for secure LDAP connections
+- LDAPS (implicit TLS) for secure LDAP connections with domain-specific certificates
 - SMTPS for secure email communication
 - Valkey session handling for improved performance
 - Certificate automation for development and testing
@@ -132,9 +132,9 @@ docker compose -f docker-compose.single-ldap.yaml up -d
 
 ### Multi-Domain Configuration
 
-- **LDAP1**: `ldap1.local:389` - Passbolt Inc. (Historical computing pioneers)
-- **LDAP2**: `ldap2.local:389` - Example Corp (Modern tech professionals)
-- **Configuration**: `config/passbolt/ldap.php` - Defines both domains
+- **LDAP1**: `ldap1.local:636` (LDAPS) - Passbolt Inc. (Historical computing pioneers)
+- **LDAP2**: `ldap2.local:636` (LDAPS) - Example Corp (Modern tech professionals)
+- **Configuration**: `config/passbolt/ldap.php` - Defines both domains with LDAPS security
 
 ### Technical Implementation
 
@@ -282,6 +282,56 @@ The Docker Compose configuration uses environment variables that are documented 
 - **Directory Sync detailed configuration** (host, port, credentials, filters) is done via Passbolt Web UI, not environment variables
 - **PHP TLS configuration** is handled in `config/php/ssl.ini`, not as Passbolt environment variables
 - All environment variables used are documented in the official Passbolt documentation
+
+## LDAPS Configuration
+
+### Security Features
+
+This setup implements LDAPS (LDAP over SSL/TLS) for secure directory synchronization:
+
+- **Encryption**: All LDAP connections use LDAPS (port 636) with SSL/TLS
+- **Certificate Validation**: Domain-specific CA certificates for certificate validation
+- **Authentication**: Read-only LDAP service accounts
+- **Multi-Domain**: Both LDAP domains use encrypted connections
+
+### Configuration Details
+
+**LDAP1 (Passbolt Inc.):**
+- Server: ldap1.local
+- Port: 636 (LDAPS)
+- Security: `use_ssl => true`
+- Certificate: Domain-specific CA certificate validation
+
+**LDAP2 (Example Corp.):**
+- Server: ldap2.local  
+- Port: 636 (LDAPS)
+- Security: `use_ssl => true`
+- Certificate: Domain-specific CA certificate validation
+
+### Certificate Management
+
+The setup uses domain-specific CA certificates for LDAPS connections:
+
+- **ldap1-ca.crt**: CA certificate for ldap1.local domain
+- **ldap2-ca.crt**: CA certificate for ldap2.local domain
+- **Certificate validation**: `LDAP_OPT_X_TLS_REQUIRE_CERT => LDAP_OPT_X_TLS_NEVER` for self-signed certs
+
+### Testing LDAPS
+
+```bash
+# Test LDAPS connectivity
+docker compose exec passbolt php -r "
+\$ldap = ldap_connect('ldaps://ldap1.local', 636);
+ldap_set_option(\$ldap, LDAP_OPT_PROTOCOL_VERSION, 3);
+ldap_set_option(\$ldap, LDAP_OPT_X_TLS_REQUIRE_CERT, LDAP_OPT_X_TLS_NEVER);
+\$bind = ldap_bind(\$ldap, 'cn=readonly,dc=passbolt,dc=local', 'readonly');
+echo \$bind ? 'LDAPS: SUCCESS' : 'LDAPS: FAILED';
+ldap_close(\$ldap);
+"
+
+# Test Passbolt directory sync with LDAPS
+docker compose exec passbolt su -s /bin/bash -c "/usr/share/php/passbolt/bin/cake directory_sync all --persist --quiet" www-data
+```
 
 ## LDAP Configuration
 
