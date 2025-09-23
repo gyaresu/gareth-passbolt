@@ -1,8 +1,19 @@
 <?php
 /**
- * Passbolt LDAP Aggregation Configuration
- * Configures directory sync for OpenLDAP meta backend aggregation
- * Demonstrates enterprise merger scenario with two LDAP directories
+ * Passbolt LDAP Aggregation Configuration with STARTTLS Security
+ * 
+ * This configuration enables secure LDAP directory synchronization using STARTTLS
+ * for encrypted connections to multiple LDAP domains. It demonstrates an enterprise
+ * merger scenario with two separate LDAP directories.
+ * 
+ * Security Features:
+ * - STARTTLS encryption for all LDAP connections (port 389 with TLS upgrade)
+ * - Certificate validation using domain-specific CA certificates
+ * - Secure authentication with read-only LDAP accounts
+ * 
+ * Architecture:
+ * - LDAP1: Passbolt Inc. (passbolt.local) - Historical computing pioneers
+ * - LDAP2: Example Corp (example.com) - Modern tech professionals
  */
 
 return [
@@ -39,17 +50,18 @@ return [
                     ]
                 ],
                 
-                // LDAP Configuration for aggregated setup
+                // LDAP Configuration for aggregated setup with STARTTLS security
                 'ldap' => [
                     'domains' => [
                         // LDAP1: Passbolt Inc. (Historical computing pioneers)
+                        // Uses STARTTLS on port 389 with certificate validation
                         'passbolt' => [
                             'domain_name' => 'passbolt.local',
                             'username' => 'cn=readonly,dc=passbolt,dc=local',
                             'password' => 'readonly',
                             'base_dn' => 'dc=passbolt,dc=local',
                             'hosts' => ['ldap1.local'],
-                            'use_tls' => false,
+                            'use_tls' => true,
                             'port' => 389,
                             'ldap_type' => 'openldap',
                             'lazy_bind' => false,
@@ -60,18 +72,22 @@ return [
                             'options' => [
                                 LDAP_OPT_RESTART => 1,
                                 LDAP_OPT_REFERRALS => 0,
+                                // STARTTLS security options
+                                LDAP_OPT_X_TLS_REQUIRE_CERT => LDAP_OPT_X_TLS_DEMAND,  // Require valid certificates
+                                LDAP_OPT_X_TLS_CACERTFILE => '/etc/ssl/certs/ldap1-ca.crt',  // Domain-specific CA
                             ],
                             'timeout' => 10,
                         ],
                         
                         // LDAP2: Example Corp (Modern tech professionals)
+                        // Uses STARTTLS on port 389 with certificate validation
                         'example' => [
                             'domain_name' => 'example.com',
                             'username' => 'cn=reader,dc=example,dc=com',
                             'password' => 'reader123',
                             'base_dn' => 'dc=example,dc=com',
                             'hosts' => ['ldap2.local'],
-                            'use_tls' => false,
+                            'use_tls' => true,
                             'port' => 389,
                             'ldap_type' => 'openldap',
                             'lazy_bind' => false,
@@ -82,6 +98,9 @@ return [
                             'options' => [
                                 LDAP_OPT_RESTART => 1,
                                 LDAP_OPT_REFERRALS => 0,
+                                // STARTTLS security options
+                                LDAP_OPT_X_TLS_REQUIRE_CERT => LDAP_OPT_X_TLS_DEMAND,  // Require valid certificates
+                                LDAP_OPT_X_TLS_CACERTFILE => '/etc/ssl/certs/ldap2-ca.crt',  // Domain-specific CA
                             ],
                             'timeout' => 10,
                         ]
