@@ -114,6 +114,8 @@ services:
       PASSBOLT_PLUGINS_SSO_ENABLED: "true"
       PASSBOLT_PLUGINS_SSO_PROVIDER_OAUTH2_ENABLED: "true"
       PASSBOLT_SECURITY_SSO_SSL_VERIFY: "true"
+      
+      PASSBOLT_PLUGINS_JWT_AUTHENTICATION_ENABLED: "true"
 
       CACHE_CAKECORE_CLASSNAME: Cake\Cache\Engine\RedisEngine
       CACHE_CAKECORE_HOST: valkey
@@ -146,6 +148,8 @@ services:
       - -c
       - |
         update-ca-certificates
+        chown www-data:www-data /etc/passbolt/jwt
+        chmod 755 /etc/passbolt/jwt
         /usr/bin/wait-for.sh -t 0 db:3306 -- /docker-entrypoint.sh
     ports:
       - 80:80
