@@ -1,6 +1,0 @@
-dn: cn=admin,dc=passbolt,dc=local
-objectClass: simpleSecurityObject
-objectClass: organizationalRole
-cn: admin
-description: LDAP administrator
-userPassword: P4ssb0lt
