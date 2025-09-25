@@ -35,6 +35,10 @@ return [
                 // Don't use email prefix/suffix (emails are complete)
                 'useEmailPrefixSuffix' => false,
                 
+                // Global user filtering - this will apply to all domains
+                // Using a custom filter to include users from both domains
+                'userCustomFilters' => '(|(memberof=cn=developers,ou=groups,dc=passbolt,dc=local)(memberof=cn=creative,ou=teams,dc=example,dc=com))',
+                
                 // Group Object Class for OpenLDAP
                 'groupObjectClass' => 'groupOfUniqueNames',
                 
@@ -69,6 +73,11 @@ return [
                             'bind_format' => '%username%',
                             'user_path' => 'ou=users',
                             'group_path' => 'ou=groups',
+                            
+                            // Domain-specific group filtering for LDAP1
+                            // Only sync users who are members of the 'developers' group
+                            // Note: Domain-specific userCustomFilters not supported in current Passbolt version
+                            
                             'options' => [
                                 LDAP_OPT_RESTART => 1,
                                 LDAP_OPT_REFERRALS => 0,
@@ -94,6 +103,11 @@ return [
                             'bind_format' => '%username%',
                             'user_path' => 'ou=people',
                             'group_path' => 'ou=teams',
+                            
+                            // Domain-specific group filtering for LDAP2
+                            // Only sync users who are members of the 'creative' group
+                            // Note: Domain-specific userCustomFilters not supported in current Passbolt version
+                            
                             'options' => [
                                 LDAP_OPT_RESTART => 1,
                                 LDAP_OPT_REFERRALS => 0,

@@ -116,6 +116,11 @@ services:
       PASSBOLT_SECURITY_SSO_SSL_VERIFY: "true"
       
       PASSBOLT_PLUGINS_JWT_AUTHENTICATION_ENABLED: "true"
+        #      PASSBOLT_SECURITY_SMTP_SETTINGS_ENDPOINTS_DISABLED: "true"
+      PASSBOLT_SECURITY_DIRECTORY_SYNC_ENDPOINTS_DISABLED: "true"
+      PASSBOLT_PLUGINS_SELF_REGISTRATION_ENABLED: "false"
+
+      PASSBOLT_SSL_FORCE: "true"
 
       CACHE_CAKECORE_CLASSNAME: Cake\Cache\Engine\RedisEngine
       CACHE_CAKECORE_HOST: valkey
@@ -217,7 +222,6 @@ services:
       default:
         aliases:
           - ldap2.local
-
 
 volumes:
   database_volume:
