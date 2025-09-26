@@ -171,10 +171,8 @@ echo "✓ Keycloak and Passbolt ready"
 echo ""
 echo "Step 8: Setting up LDAP certificates..."
 echo "   Extracting LDAP certificates from containers..."
-./scripts/fix-ldaps-certificates.sh
-echo "   Switching to aggregation LDAP configuration..."
-cp config/passbolt/ldap-aggregation.php config/passbolt/ldap.php
-echo "   Rebuilding Passbolt with certificate bundle and aggregation config..."
+./scripts/fix-ldaps-certificates-aggregation.sh
+echo "   Rebuilding Passbolt with certificate bundle..."
 docker compose build passbolt
 docker compose up -d passbolt
 wait_for_service "Passbolt" 443 60
@@ -209,6 +207,29 @@ else
     fi
 fi
 
+# Step 10: LDAP synchronization setup
+echo ""
+echo "Step 10: LDAP synchronization setup..."
+echo "   Note: LDAP directory sync must be configured through Passbolt web UI first"
+echo "   The CakePHP command will be available after web UI configuration"
+echo ""
+echo "   To complete LDAP setup:"
+echo "   1. Go to https://passbolt.local"
+echo "   2. Log in as ada@passbolt.com (passphrase: ada@passbolt.com)"
+echo "   3. Go to Administration > Directory Synchronization"
+echo "   4. Configure LDAP settings:"
+echo "      - Host: ldap-meta.local"
+echo "      - Port: 636 (LDAPS)"
+echo "      - Base DN: dc=unified,dc=local"
+echo "      - Username: cn=admin,dc=unified,dc=local"
+echo "      - Password: secret"
+echo "      - Use SSL: true"
+echo "   5. Test connection and run synchronization"
+echo ""
+echo "   Manual sync command (after web UI configuration):"
+echo "   docker compose exec passbolt su -s /bin/bash -c \"/usr/share/php/passbolt/bin/cake directory_sync all --persist --quiet\" www-data"
+echo "✓ LDAP synchronization instructions provided"
+
 # Final verification
 echo ""
 echo "✓ LDAP Aggregation Demo Setup Complete!"
@@ -221,14 +242,14 @@ echo "   - SMTP4Dev:     http://smtp.local:5050"
 echo "   - LDAP Meta:    ldap-meta.local:3389 (LDAP), :3636 (LDAPS)"
 echo ""
 echo "Demo Users:"
-echo "📁 LDAP1 (Passbolt Inc.) - dc=passbolt,dc=local:"
+echo "LDAP1 (Passbolt Inc.) - dc=passbolt,dc=local:"
 echo "   - ada@passbolt.com (Ada Lovelace) - CTO"
 echo "   - betty@passbolt.com (Betty Holberton) - Senior Developer"
 echo "   - carol@passbolt.com (Carol Shaw) - Game Dev Lead"
 echo "   - dame@passbolt.com (Dame Stephanie Shirley) - CEO"
 echo "   - edith@passbolt.com (Edith Clarke) - Engineering Manager"
 echo ""
-echo "📁 LDAP2 (Example Corp.) - dc=example,dc=com:"
+echo "LDAP2 (Example Corp.) - dc=example,dc=com:"
 echo "   - john.smith@example.com (John Smith) - Project Manager"
 echo "   - sarah.johnson@example.com (Sarah Johnson) - Security Analyst"
 echo "   - michael.chen@example.com (Michael Chen) - DevOps Engineer"
@@ -242,7 +263,7 @@ echo "   - Bind DN: cn=admin,dc=unified,dc=local"
 echo "   - Password: secret"
 echo ""
 if [ -d "keys/gpg" ] && [ "$(ls -A keys/gpg 2>/dev/null)" ]; then
-    echo "🔑 GPG Keys Generated:"
+    echo "GPG Keys Generated:"
     echo "   - Location: keys/gpg/"
     echo "   - Passphrase: email address (for all users)"
     echo "   - Import private key in Passbolt for login"
@@ -254,7 +275,7 @@ echo "2. Run synchronization to import all users from both directories"
 echo "3. Test user login with GPG keys (passphrase = email)"
 echo "4. Explore merged user/group data from both companies"
 echo ""
-echo "This demonstrates enterprise LDAP aggregation for company mergers."
+echo "This demonstrates LDAP aggregation for multi-directory environments."
 
 # Check service status
 echo ""

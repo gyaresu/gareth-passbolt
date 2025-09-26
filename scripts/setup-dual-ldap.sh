@@ -44,7 +44,7 @@ wait_for_service() {
         echo "   Waiting... ($counter/$timeout seconds)"
     done
     
-    echo "❌ ERROR: $service failed to start within $timeout seconds"
+    echo "ERROR: $service failed to start within $timeout seconds"
     return 1
 }
 
@@ -69,7 +69,7 @@ wait_for_ldap() {
         echo "   Waiting... ($counter/$timeout seconds)"
     done
     
-    echo "❌ ERROR: LDAP container '$container' failed to start within $timeout seconds"
+    echo "ERROR: LDAP container '$container' failed to start within $timeout seconds"
     return 1
 }
 
@@ -161,7 +161,7 @@ echo "✓ Keycloak and Passbolt ready"
 echo ""
 echo "Step 7: Setting up LDAP certificates..."
 echo "   Extracting LDAP certificates from containers..."
-./scripts/fix-ldaps-certificates.sh
+./scripts/fix-ldaps-certificates-direct.sh
 echo "   Rebuilding Passbolt with certificate bundle..."
 docker compose build passbolt
 docker compose up -d passbolt
@@ -187,15 +187,32 @@ echo "   Creating admin user 'ada@passbolt.com'..."
 echo "   (This user now exists in LDAP1, so sync will work properly)"
 
 if docker compose exec passbolt su -m -c '/usr/share/php/passbolt/bin/cake passbolt register_user -u ada@passbolt.com -f "Ada" -l "Lovelace" -r admin' -s /bin/bash www-data 2>&1 | grep -q "already exists\|already registered"; then
-    echo "✓ Admin user 'ada@passbolt.com' already exists"
+    echo "Admin user 'ada@passbolt.com' already exists"
 else
-    echo "✓ Admin user 'ada@passbolt.com' created successfully!"
-    echo "   📧 Check SMTP4Dev for registration email: http://smtp.local:5050"
+    echo "Admin user 'ada@passbolt.com' created successfully!"
+    echo "   Check SMTP4Dev for registration email: http://smtp.local:5050"
     if [ -f "keys/gpg/ada@passbolt.com.key" ]; then
-        echo "   🔑 GPG key available: keys/gpg/ada@passbolt.com.key"
-        echo "   🔐 Passphrase: ada@passbolt.com"
+        echo "   GPG key available: keys/gpg/ada@passbolt.com.key"
+        echo "   Passphrase: ada@passbolt.com"
     fi
 fi
+
+# Step 10: LDAP synchronization setup
+echo ""
+echo "Step 10: LDAP synchronization setup..."
+echo "   Note: LDAP directory sync must be configured through Passbolt web UI first"
+echo "   The CakePHP command will be available after web UI configuration"
+echo ""
+echo "   To complete LDAP setup:"
+echo "   1. Go to https://passbolt.local"
+echo "   2. Log in as ada@passbolt.com (passphrase: ada@passbolt.com)"
+echo "   3. Go to Administration > Directory Synchronization"
+echo "   4. Configure LDAP settings using the provided configuration"
+echo "   5. Test connection and run synchronization"
+echo ""
+echo "   Manual sync command (after web UI configuration):"
+echo "   docker compose exec passbolt su -s /bin/bash -c \"/usr/share/php/passbolt/bin/cake directory_sync all --persist --quiet\" www-data"
+echo "✓ LDAP synchronization instructions provided"
 
 # Final verification
 echo ""
@@ -210,14 +227,14 @@ echo "   - LDAP1:        ldap1.local:389 (LDAP), :636 (LDAPS)"
 echo "   - LDAP2:        ldap2.local:389 (LDAP), :636 (LDAPS)"
 echo ""
 echo "Demo Users:"
-echo "📁 LDAP1 (Passbolt Inc.) - dc=passbolt,dc=local:"
+echo "LDAP1 (Passbolt Inc.) - dc=passbolt,dc=local:"
 echo "   - ada@passbolt.com (Ada Lovelace) - CTO"
 echo "   - betty@passbolt.com (Betty Holberton) - Senior Developer"
 echo "   - carol@passbolt.com (Carol Shaw) - Game Dev Lead"
 echo "   - dame@passbolt.com (Dame Stephanie Shirley) - CEO"
 echo "   - edith@passbolt.com (Edith Clarke) - Engineering Manager"
 echo ""
-echo "📁 LDAP2 (Example Corp.) - dc=example,dc=com:"
+echo "LDAP2 (Example Corp.) - dc=example,dc=com:"
 echo "   - john.smith@example.com (John Smith) - Project Manager"
 echo "   - sarah.johnson@example.com (Sarah Johnson) - Security Analyst"
 echo "   - michael.chen@example.com (Michael Chen) - DevOps Engineer"
@@ -230,7 +247,7 @@ echo "   - Configuration: config/passbolt/ldap.php"
 echo "   - Approach: Direct multi-domain LDAP synchronization"
 echo ""
 if [ -d "keys/gpg" ] && [ "$(ls -A keys/gpg 2>/dev/null)" ]; then
-    echo "🔑 GPG Keys Generated:"
+    echo "GPG Keys Generated:"
     echo "   - Location: keys/gpg/"
     echo "   - Passphrase: email address (for all users)"
     echo "   - Import private key in Passbolt for login"

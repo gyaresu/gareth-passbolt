@@ -146,11 +146,11 @@ This repository demonstrates **two different LDAP integration patterns** for edu
 |--------|--------------------------|-----------------------------------|
 | **Architecture** | Application-level aggregation | Infrastructure-level aggregation |
 | **Complexity** | Simpler (no proxy layer) | More complex (proxy layer) |
-| **Passbolt Config** | Multi-domain PHP configuration | Single unified LDAP endpoint |
+| **Passbolt Config** | Multi-domain PHP configuration | Web UI configuration only (no PHP config needed) |
 | **Use Case** | Applications with native multi-domain support | Environments requiring unified LDAP namespace |
 | **Educational Value** | Shows application-level integration patterns | Shows infrastructure-level integration patterns |
 | **Setup Script** | `./scripts/setup-dual-ldap.sh` | `./scripts/setup-aggregation-demo.sh` |
-| **Configuration** | `config/passbolt/ldap.php` | `config/passbolt/ldap-aggregation.php` |
+| **Configuration** | `config/passbolt/ldap.php` | Web UI only |
 
 ### Direct Multi-Domain LDAP Approach
 
@@ -158,8 +158,8 @@ This approach uses Passbolt's native multi-domain LDAP capabilities to connect d
 
 **Architecture:**
 ```
-Passbolt → LDAP1 (dc=passbolt,dc=local)
-        → LDAP2 (dc=example,dc=com)
+Passbolt → LDAP1 (dc=passbolt,dc=local) - LDAPS:636
+        → LDAP2 (dc=example,dc=com)     - LDAPS:636
 ```
 
 **Benefits:**
@@ -167,10 +167,43 @@ Passbolt → LDAP1 (dc=passbolt,dc=local)
 - No additional infrastructure components
 - Simpler certificate management
 - Application-level integration
+- LDAPS encryption working (port 636 with SSL/TLS)
+- Command-line synchronization working
+
+**Configuration:** `config/passbolt/ldap.php` (PHP configuration file)
+**Sync Command:** `docker compose exec passbolt su -s /bin/bash -c "/usr/share/php/passbolt/bin/cake directory_sync all --persist --quiet" www-data`
+
+**Tested Results:**
+- Users imported from both LDAP directories (Ada, Betty, Carol, Lisa)
+- Groups created from both directories (8 groups total)
+- LDAPS encryption confirmed (port 636)
+- Certificate validation working
 
 ### LDAP Aggregation via Meta Backend Approach
 
 This approach uses OpenLDAP meta backend to create a unified LDAP namespace that aggregates results from multiple backend LDAP servers. Passbolt connects to a single unified endpoint.
+
+**Why no PHP configuration is needed:**
+- The web UI provides all necessary LDAP connection settings (host, port, credentials, base DN)
+- The aggregation proxy handles the complex multi-directory aggregation transparently
+- Passbolt sees a single unified LDAP namespace, just like any other LDAP server
+- This demonstrates true infrastructure-level aggregation
+
+**Important Configuration:**
+- `PASSBOLT_SECURITY_DIRECTORY_SYNC_ENDPOINTS_DISABLED: "false"` must be set to enable web UI directory sync
+- This allows configuration through `/app/administration/users-directory` in the web interface
+
+**Web UI Configuration Steps:**
+1. Navigate to `/app/administration/users-directory` in Passbolt
+2. Configure LDAP connection:
+   - **Host**: `ldap-meta.local`
+   - **Port**: `636` (LDAPS) - use LDAPS port for encrypted connection
+   - **Base DN**: `dc=unified,dc=local`
+   - **Username**: `cn=admin,dc=unified,dc=local`
+   - **Password**: `secret`
+   - **Use SSL**: `true` (LDAPS over port 636)
+3. Test connection and save configuration
+4. Run directory synchronization
 
 **Architecture:**
 ```

@@ -1,19 +1,18 @@
 <?php
 /**
- * Passbolt LDAP Aggregation Configuration with LDAPS Security
+ * Passbolt LDAP Aggregation Configuration
  * 
- * This configuration enables secure LDAP directory synchronization using LDAPS
- * for encrypted connections to multiple LDAP domains. It demonstrates an enterprise
- * merger scenario with two separate LDAP directories.
- * 
- * Security Features:
- * - LDAPS encryption for all LDAP connections (port 636 with SSL/TLS)
- * - Certificate validation using domain-specific CA certificates
- * - Secure authentication with read-only LDAP accounts
+ * This configuration enables LDAP directory synchronization using the OpenLDAP meta backend.
+ * Passbolt connects to a single unified LDAP endpoint that aggregates results from multiple
+ * backend LDAP directories into a unified namespace.
  * 
  * Architecture:
- * - LDAP1: Passbolt Inc. (passbolt.local) - Historical computing pioneers
- * - LDAP2: Example Corp (example.com) - Modern tech professionals
+ * - LDAP Meta Proxy: ldap-meta.local:3389 (unified namespace)
+ * - Backend 1: Passbolt Inc. (dc=passbolt,dc=local) - Historical computing pioneers
+ * - Backend 2: Example Corp (dc=example,dc=com) - Modern tech professionals
+ * 
+ * The meta backend provides a unified view of both directories, allowing Passbolt to
+ * synchronize users and groups from both organizations through a single LDAP connection.
  */
 
 return [
@@ -29,23 +28,20 @@ return [
                 // Default group admin for newly created groups
                 'defaultGroupAdminUser' => 'ada@passbolt.com',
                 
-                // Return enabled users only
+                // Sync all users (not just enabled ones)
                 'enabledUsersOnly' => false,
                 
-                // Don't use email prefix/suffix (emails are complete)
+                // Don't use email prefix/suffix
                 'useEmailPrefixSuffix' => false,
                 
-                // Global user filtering - this will apply to all domains
-                // Using a custom filter to include users from both domains
-                'userCustomFilters' => '(|(memberof=cn=developers,ou=groups,dc=passbolt,dc=local)(memberof=cn=creative,ou=teams,dc=example,dc=com))',
+                // User filter for synchronization
+                'userCustomFilters' => '(|(memberof=cn=developers,ou=groups,dc=passbolt,dc=unified,dc=local)(memberof=cn=creative,ou=teams,dc=example,dc=unified,dc=local))',
                 
-                // Group Object Class for OpenLDAP
+                // Object classes for users and groups
                 'groupObjectClass' => 'groupOfUniqueNames',
-                
-                // User Object Class for OpenLDAP  
                 'userObjectClass' => 'inetOrgPerson',
                 
-                // Field mapping for OpenLDAP
+                // Field mappings for OpenLDAP
                 'fieldsMapping' => [
                     'openldap' => [
                         'group' => [
@@ -54,17 +50,15 @@ return [
                     ]
                 ],
                 
-                // LDAP Configuration for aggregated setup with LDAPS security
+                // Single LDAP domain configuration for aggregation proxy
                 'ldap' => [
                     'domains' => [
-                        // LDAP1: Passbolt Inc. (Historical computing pioneers)
-                        // Uses LDAPS on port 636 with certificate validation
-                        'passbolt' => [
-                            'domain_name' => 'passbolt.local',
-                            'username' => 'cn=readonly,dc=passbolt,dc=local',
+                        'unified' => [
+                            'domain_name' => 'unified.local',
+                            'username' => 'cn=readonly,dc=passbolt,dc=unified,dc=local',
                             'password' => 'readonly',
-                            'base_dn' => 'dc=passbolt,dc=local',
-                            'hosts' => ['ldap1.local'],
+                            'base_dn' => 'dc=unified,dc=local',
+                            'hosts' => ['ldap-meta.local'],
                             'use_ssl' => true,
                             'port' => 636,
                             'ldap_type' => 'openldap',
@@ -74,51 +68,17 @@ return [
                             'user_path' => 'ou=users',
                             'group_path' => 'ou=groups',
                             
-                            // Domain-specific group filtering for LDAP1
-                            // Only sync users who are members of the 'developers' group
-                            // Note: Domain-specific userCustomFilters not supported in current Passbolt version
-                            
+                            // LDAPS security options
                             'options' => [
                                 LDAP_OPT_RESTART => 1,
                                 LDAP_OPT_REFERRALS => 0,
-                                // LDAPS security options
-                                LDAP_OPT_X_TLS_REQUIRE_CERT => LDAP_OPT_X_TLS_NEVER,  // Allow self-signed certificates
+                                LDAP_OPT_X_TLS_REQUIRE_CERT => LDAP_OPT_X_TLS_NEVER,
                             ],
                             'timeout' => 10,
                         ],
-                        
-                        // LDAP2: Example Corp (Modern tech professionals)
-                        // Uses LDAPS on port 636 with certificate validation
-                        'example' => [
-                            'domain_name' => 'example.com',
-                            'username' => 'cn=reader,dc=example,dc=com',
-                            'password' => 'reader123',
-                            'base_dn' => 'dc=example,dc=com',
-                            'hosts' => ['ldap2.local'],
-                            'use_ssl' => true,
-                            'port' => 636,
-                            'ldap_type' => 'openldap',
-                            'lazy_bind' => false,
-                            'server_selection' => 'order',
-                            'bind_format' => '%username%',
-                            'user_path' => 'ou=people',
-                            'group_path' => 'ou=teams',
-                            
-                            // Domain-specific group filtering for LDAP2
-                            // Only sync users who are members of the 'creative' group
-                            // Note: Domain-specific userCustomFilters not supported in current Passbolt version
-                            
-                            'options' => [
-                                LDAP_OPT_RESTART => 1,
-                                LDAP_OPT_REFERRALS => 0,
-                                // LDAPS security options
-                                LDAP_OPT_X_TLS_REQUIRE_CERT => LDAP_OPT_X_TLS_NEVER,  // Allow self-signed certificates
-                            ],
-                            'timeout' => 10,
-                        ]
                     ],
-                ]
-            ]
-        ]
-    ]
+                ],
+            ],
+        ],
+    ],
 ];

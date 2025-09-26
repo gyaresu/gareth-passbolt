@@ -33,6 +33,7 @@ echo "Ensuring admin user exists..."
 ADMIN_EXISTS=$(docker compose exec ldap1 ldapsearch -x -H ldaps://localhost:636 \
     -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
     -b "dc=passbolt,dc=local" "(cn=admin)" 2>/dev/null | grep -c "dn: cn=admin" || echo "0")
+ADMIN_EXISTS=$(echo "$ADMIN_EXISTS" | head -1)
 
 if [ "$ADMIN_EXISTS" -eq "0" ]; then
     echo "Creating admin user..."
@@ -68,8 +69,7 @@ ou: groups
 EOF
 
 docker compose cp "$LDIF_FILE" ldap1:/tmp/ous.ldif
-docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/ous.ldif
-check_ldap_command
+docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/ous.ldif || echo "Organizational units may already exist"
 docker compose exec ldap1 rm /tmp/ous.ldif
 rm "$LDIF_FILE"
 

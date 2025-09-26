@@ -117,7 +117,7 @@ services:
       
       PASSBOLT_PLUGINS_JWT_AUTHENTICATION_ENABLED: "true"
         #      PASSBOLT_SECURITY_SMTP_SETTINGS_ENDPOINTS_DISABLED: "true"
-      PASSBOLT_SECURITY_DIRECTORY_SYNC_ENDPOINTS_DISABLED: "true"
+      PASSBOLT_SECURITY_DIRECTORY_SYNC_ENDPOINTS_DISABLED: "false"
       PASSBOLT_PLUGINS_SELF_REGISTRATION_ENABLED: "false"
 
       PASSBOLT_SSL_FORCE: "true"
@@ -135,7 +135,6 @@ services:
       - ./config/php/www.conf:/etc/php-fpm.d/www.conf
       - ./config/php/ssl.ini:/etc/php/8.2/cli/conf.d/99-ssl.ini
       - ./config/nginx/nginx-passbolt.conf:/etc/nginx/sites-enabled/nginx-passbolt.conf
-      - ./config/passbolt/ldap.php:/etc/passbolt/ldap.php:ro
       - ./keys/ca.crt:/usr/local/share/ca-certificates/keycloak.crt
       - ./keys/passbolt.crt:/etc/ssl/certs/certificate.crt:ro
       - ./keys/passbolt.key:/etc/ssl/certs/certificate.key:ro
@@ -227,34 +226,21 @@ services:
   # Provides unified LDAP interface for Passbolt synchronization
   # Aggregates results from ldap1 and ldap2 into unified namespace
   ldap-meta:
-    image: osixia/openldap:1.5.0
+    build:
+      context: .
+      dockerfile: Dockerfile.ldap-meta
     container_name: ldap-meta
     hostname: ldap-meta.local
     restart: unless-stopped
     depends_on:
       - ldap1
       - ldap2
-    environment:
-      LDAP_ORGANISATION: "Unified Directory"
-      LDAP_DOMAIN: "unified.local"
-      LDAP_ADMIN_PASSWORD: "secret"
-      LDAP_CONFIG_PASSWORD: "secret"
-      LDAP_TLS: "true"
-      LDAP_TLS_VERIFY_CLIENT: "never"
-      LDAP_BASE_DN: "dc=unified,dc=local"
-      LDAP_READONLY_USER: "true"
-      LDAP_READONLY_USER_USERNAME: "readonly"
-      LDAP_READONLY_USER_PASSWORD: "readonly"
     ports:
       - "3389:389"   # LDAP
       - "3636:636"    # LDAPS
     volumes:
-      - ./config/ldap-meta/slapd.conf:/etc/ldap/slapd.conf:ro
-      - ./config/ldap-meta/entrypoint.sh:/container/service/slapd/startup/50startup:ro
       - ldap_meta_data:/var/lib/ldap
       - ldap_meta_config:/etc/ldap/slapd.d
-      - ldap_meta_certs:/container/service/slapd/assets/certs
-    command: ["--loglevel", "stats", "--loglevel", "conns", "filter", "config"]
     networks:
       default:
         aliases:
