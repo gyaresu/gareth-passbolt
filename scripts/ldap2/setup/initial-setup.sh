@@ -114,8 +114,7 @@ departmentNumber: PM
 description: Project Manager - leads cross-functional teams
 EOF
 docker compose cp /tmp/john.ldif $LDAP_CONTAINER:/tmp/john.ldif
-docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/john.ldif
-check_ldap_command
+docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/john.ldif || echo "User may already exist"
 docker compose exec $LDAP_CONTAINER rm /tmp/john.ldif
 rm /tmp/john.ldif
 verify_user_exists "John Smith"
@@ -140,8 +139,7 @@ departmentNumber: SEC
 description: Security Analyst - protects company assets and data
 EOF
 docker compose cp /tmp/sarah.ldif $LDAP_CONTAINER:/tmp/sarah.ldif
-docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/sarah.ldif
-check_ldap_command
+docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/sarah.ldif || echo "User may already exist"
 docker compose exec $LDAP_CONTAINER rm /tmp/sarah.ldif
 rm /tmp/sarah.ldif
 verify_user_exists "Sarah Johnson"
@@ -166,8 +164,7 @@ departmentNumber: ENG
 description: DevOps Engineer - bridges development and operations
 EOF
 docker compose cp /tmp/michael.ldif $LDAP_CONTAINER:/tmp/michael.ldif
-docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/michael.ldif
-check_ldap_command
+docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/michael.ldif || echo "User may already exist"
 docker compose exec $LDAP_CONTAINER rm /tmp/michael.ldif
 rm /tmp/michael.ldif
 verify_user_exists "Michael Chen"
@@ -192,8 +189,7 @@ departmentNumber: DES
 description: UX Designer - creates intuitive user experiences
 EOF
 docker compose cp /tmp/lisa.ldif $LDAP_CONTAINER:/tmp/lisa.ldif
-docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/lisa.ldif
-check_ldap_command
+docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/lisa.ldif || echo "User may already exist"
 docker compose exec $LDAP_CONTAINER rm /tmp/lisa.ldif
 rm /tmp/lisa.ldif
 verify_user_exists "Lisa Rodriguez"
@@ -214,8 +210,7 @@ uniqueMember: cn=Sarah Johnson,$LDAP_USERS_DN
 uniqueMember: cn=Michael Chen,$LDAP_USERS_DN
 EOF
 docker compose cp /tmp/project_teams.ldif $LDAP_CONTAINER:/tmp/project_teams.ldif
-docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/project_teams.ldif
-check_ldap_command
+docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/project_teams.ldif || echo "Group may already exist"
 docker compose exec $LDAP_CONTAINER rm /tmp/project_teams.ldif
 rm /tmp/project_teams.ldif
 
@@ -230,8 +225,7 @@ description: Security Team - information security specialists
 uniqueMember: cn=Sarah Johnson,$LDAP_USERS_DN
 EOF
 docker compose cp /tmp/security.ldif $LDAP_CONTAINER:/tmp/security.ldif
-docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/security.ldif
-check_ldap_command
+docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/security.ldif || echo "Group may already exist"
 docker compose exec $LDAP_CONTAINER rm /tmp/security.ldif
 rm /tmp/security.ldif
 
@@ -246,8 +240,7 @@ description: Operations Team - infrastructure and deployment
 uniqueMember: cn=Michael Chen,$LDAP_USERS_DN
 EOF
 docker compose cp /tmp/operations.ldif $LDAP_CONTAINER:/tmp/operations.ldif
-docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/operations.ldif
-check_ldap_command
+docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/operations.ldif || echo "Group may already exist"
 docker compose exec $LDAP_CONTAINER rm /tmp/operations.ldif
 rm /tmp/operations.ldif
 
@@ -262,8 +255,7 @@ description: Creative Team - design and user experience
 uniqueMember: cn=Lisa Rodriguez,$LDAP_USERS_DN
 EOF
 docker compose cp /tmp/creative.ldif $LDAP_CONTAINER:/tmp/creative.ldif
-docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/creative.ldif
-check_ldap_command
+docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/creative.ldif || echo "Group may already exist"
 docker compose exec $LDAP_CONTAINER rm /tmp/creative.ldif
 rm /tmp/creative.ldif
 

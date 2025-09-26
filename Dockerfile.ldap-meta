@@ -1,0 +1,36 @@
+FROM debian:trixie-slim
+
+# Install OpenLDAP and dependencies
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    slapd \
+    ldap-utils \
+    openssl \
+    netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /etc/ldap/slapd.d
+
+# Create directories
+RUN mkdir -p /root/openldap_proxy/data/certs && \
+    mkdir -p /root/openldap_proxy/data/log && \
+    mkdir -p /var/run/slapd && \
+    chown -R openldap:openldap /var/run/slapd /root/openldap_proxy/data
+
+# Copy configuration files
+COPY config/ldap-meta/slapd.conf /etc/ldap/slapd.conf
+COPY config/ldap-meta/entrypoint.sh /root/openldap_proxy/entrypoint.sh
+
+# Generate certificates
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /root/openldap_proxy/data/certs/ldap.key \
+    -out /root/openldap_proxy/data/certs/ldap.crt \
+    -subj "/CN=ldap-meta.local"
+
+# Make entrypoint executable
+RUN chmod +x /root/openldap_proxy/entrypoint.sh
+
+# Expose LDAP ports
+EXPOSE 389 636
+
+# Start the proven OpenLDAP meta backend
+ENTRYPOINT ["/root/openldap_proxy/entrypoint.sh"]
