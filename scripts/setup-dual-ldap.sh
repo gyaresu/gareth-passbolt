@@ -1,22 +1,22 @@
 #!/bin/bash
 
-# Passbolt LDAP Aggregation Demo Setup Script
-# Complete setup for LDAP aggregation demonstration showing company merger scenario
+# Passbolt Dual LDAP Setup Script
+# Complete setup for direct dual LDAP synchronization
 # 
 # This script sets up:
 # - LDAP1 (Passbolt Inc.) - Historical computing pioneers
 # - LDAP2 (Example Corp.) - Modern tech professionals  
-# - OpenLDAP Meta Backend for aggregation
+# - Passbolt with direct multi-domain LDAP configuration
 # - GPG keys for all demo users
 # - Proper startup sequence to ensure LDAP data exists before Passbolt admin creation
 
 set -e
 
-echo "Setting up Passbolt LDAP Aggregation Demo"
+echo "Setting up Passbolt Multi-Domain LDAP Demo"
 echo "=========================================="
 echo ""
-echo "Company merger scenario: Passbolt Inc. + Example Corp."
-echo "LDAP aggregation combines both directories into unified Passbolt instance"
+echo "Direct multi-domain LDAP approach: Passbolt connects directly to both LDAP servers"
+echo "Uses Passbolt's native multi-domain LDAP capabilities"
 echo ""
 
 # Get the absolute path of the script directory
@@ -125,14 +125,14 @@ wait_for_service "Valkey" 6379 30
 wait_for_service "SMTP4Dev" 5050 30
 echo "✓ Infrastructure services ready"
 
-# Step 3: Start LDAP backend servers
+# Step 3: Start LDAP servers
 echo ""
-echo "Step 3: Starting LDAP backend servers..."
+echo "Step 3: Starting LDAP servers..."
 echo "   Starting LDAP1 (Passbolt Inc.) and LDAP2 (Example Corp.)..."
 docker compose up -d ldap1 ldap2
 wait_for_ldap "ldap1" "cn=admin,dc=passbolt,dc=local" "P4ssb0lt" "dc=passbolt,dc=local"
 wait_for_ldap "ldap2" "cn=admin,dc=example,dc=com" "Ex4mple123" "dc=example,dc=com"
-echo "✓ LDAP backend servers ready"
+echo "✓ LDAP servers ready"
 
 # Step 4: Setup LDAP1 data (Passbolt Inc.)
 echo ""
@@ -148,41 +148,29 @@ echo "   Creating modern tech professionals..."
 ./scripts/ldap2/setup/initial-setup.sh
 echo "✓ LDAP2 (Example Corp.) data setup complete"
 
-# Step 6: Start LDAP aggregation proxy
+# Step 6: Start Keycloak and Passbolt
 echo ""
-echo "Step 6: Starting LDAP aggregation proxy..."
-echo "   Building and starting OpenLDAP meta backend..."
-docker compose up -d ldap-meta
-wait_for_service "LDAP Meta Proxy" 3389 60
-echo "✓ LDAP aggregation proxy ready"
-echo "   📊 Unified namespace: dc=unified,dc=local"
-echo "   🔗 Endpoint: ldap-meta.local:3389"
-
-# Step 7: Start Keycloak and Passbolt
-echo ""
-echo "Step 7: Starting Keycloak and Passbolt..."
+echo "Step 6: Starting Keycloak and Passbolt..."
 echo "   Starting SSO and password manager services..."
 docker compose up -d keycloak passbolt
 wait_for_service "Keycloak" 8443 60
 wait_for_service "Passbolt" 443 60
 echo "✓ Keycloak and Passbolt ready"
 
-# Step 8: Setup LDAP certificates for Passbolt
+# Step 7: Setup LDAP certificates for Passbolt
 echo ""
-echo "Step 8: Setting up LDAP certificates..."
+echo "Step 7: Setting up LDAP certificates..."
 echo "   Extracting LDAP certificates from containers..."
 ./scripts/fix-ldaps-certificates.sh
-echo "   Switching to aggregation LDAP configuration..."
-cp config/passbolt/ldap-aggregation.php config/passbolt/ldap.php
-echo "   Rebuilding Passbolt with certificate bundle and aggregation config..."
+echo "   Rebuilding Passbolt with certificate bundle..."
 docker compose build passbolt
 docker compose up -d passbolt
 wait_for_service "Passbolt" 443 60
-echo "✓ LDAP certificates and aggregation configuration ready"
+echo "✓ LDAP certificates configured"
 
-# Step 9: Generate GPG keys for demo users
+# Step 8: Generate GPG keys for demo users
 echo ""
-echo "Step 9: Generating GPG keys for demo users..."
+echo "Step 8: Generating GPG keys for demo users..."
 echo "   Creating GPG keys with email=passphrase for convenience..."
 if command -v gpg &> /dev/null; then
     ./scripts/gpg/generate-demo-keys.sh
@@ -192,9 +180,9 @@ else
     echo "   Users will need to generate their own keys for Passbolt login"
 fi
 
-# Step 10: Create Passbolt admin user (ada@passbolt.com now exists in LDAP)
+# Step 9: Create Passbolt admin user (ada@passbolt.com now exists in LDAP)
 echo ""
-echo "Step 10: Creating Passbolt admin user..."
+echo "Step 9: Creating Passbolt admin user..."
 echo "   Creating admin user 'ada@passbolt.com'..."
 echo "   (This user now exists in LDAP1, so sync will work properly)"
 
@@ -211,14 +199,15 @@ fi
 
 # Final verification
 echo ""
-echo "✓ LDAP Aggregation Demo Setup Complete!"
+echo "✓ Multi-Domain LDAP Demo Setup Complete!"
 echo "========================================"
 echo ""
 echo "Access URLs:"
 echo "   - Passbolt:     https://passbolt.local"
 echo "   - Keycloak:     https://keycloak.local:8443"
 echo "   - SMTP4Dev:     http://smtp.local:5050"
-echo "   - LDAP Meta:    ldap-meta.local:3389 (LDAP), :3636 (LDAPS)"
+echo "   - LDAP1:        ldap1.local:389 (LDAP), :636 (LDAPS)"
+echo "   - LDAP2:        ldap2.local:389 (LDAP), :636 (LDAPS)"
 echo ""
 echo "Demo Users:"
 echo "📁 LDAP1 (Passbolt Inc.) - dc=passbolt,dc=local:"
@@ -234,12 +223,11 @@ echo "   - sarah.johnson@example.com (Sarah Johnson) - Security Analyst"
 echo "   - michael.chen@example.com (Michael Chen) - DevOps Engineer"
 echo "   - lisa.rodriguez@example.com (Lisa Rodriguez) - UX Designer"
 echo ""
-echo "LDAP Aggregation Configuration:"
-echo "   - Server: ldap-meta.local"
-echo "   - Port: 3389"
-echo "   - Base DN: dc=unified,dc=local"
-echo "   - Bind DN: cn=admin,dc=unified,dc=local"
-echo "   - Password: secret"
+echo "Multi-Domain LDAP Configuration:"
+echo "   - LDAP1: ldap1.local:636 (LDAPS)"
+echo "   - LDAP2: ldap2.local:636 (LDAPS)"
+echo "   - Configuration: config/passbolt/ldap.php"
+echo "   - Approach: Direct multi-domain LDAP synchronization"
 echo ""
 if [ -d "keys/gpg" ] && [ "$(ls -A keys/gpg 2>/dev/null)" ]; then
     echo "🔑 GPG Keys Generated:"
@@ -252,9 +240,9 @@ echo "Next Steps:"
 echo "1. Configure LDAP Directory Sync in Passbolt web UI"
 echo "2. Run synchronization to import all users from both directories"
 echo "3. Test user login with GPG keys (passphrase = email)"
-echo "4. Explore merged user/group data from both companies"
+echo "4. Explore multi-domain user/group data from both companies"
 echo ""
-echo "This demonstrates enterprise LDAP aggregation for company mergers."
+echo "This demonstrates direct multi-domain LDAP synchronization for company mergers."
 
 # Check service status
 echo ""

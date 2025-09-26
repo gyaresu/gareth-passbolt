@@ -81,6 +81,10 @@ sleep 15
 echo "Setting up LDAP users and groups..."
 ./scripts/ldap/setup/initial-setup.sh
 
+# Set up LDAP2 users and groups (for dual LDAP approach)
+echo "Setting up LDAP2 users and groups..."
+./scripts/ldap2/setup/initial-setup.sh
+
 # Create admin user if it doesn't exist
 echo "Creating Passbolt admin user..."
 echo "Creating default admin user 'ada'..."
