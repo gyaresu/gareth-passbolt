@@ -36,19 +36,47 @@
 
 ### Automated Setup
 
-#### LDAP Aggregation Demo (Recommended)
-Use the complete aggregation setup script for the full merger scenario:
+This repository supports **two different LDAP integration approaches** for educational purposes:
+
+#### Approach 1: Direct Multi-Domain LDAP
+Use the direct multi-domain LDAP setup for application-level aggregation:
+```bash
+./scripts/setup-dual-ldap.sh
+```
+
+**Benefits:**
+- Uses Passbolt's native multi-domain LDAP capabilities
+- No proxy layer required
+- Simpler architecture
+- Application-level integration
+
+**This script will:**
+- Set up LDAP1 (Passbolt Inc.) with historical computing pioneers
+- Set up LDAP2 (Example Corp.) with modern tech professionals
+- Configure Passbolt to connect directly to both LDAP servers
+- Generate ECC GPG keys for all demo users (passphrase = email)
+- Create Passbolt admin user 'ada' (exists in LDAP before creation)
+- Demonstrate direct multi-domain LDAP synchronization
+
+#### Approach 2: LDAP Aggregation via Meta Backend
+Use the aggregation setup for infrastructure-level aggregation:
 ```bash
 ./scripts/setup-aggregation-demo.sh
 ```
 
-This script will:
+**Benefits:**
+- Uses OpenLDAP meta backend for transparent aggregation
+- Unified namespace for applications
+- Infrastructure-level integration
+- Single LDAP endpoint for applications
+
+**This script will:**
 - Set up LDAP1 (Passbolt Inc.) with historical computing pioneers
 - Set up LDAP2 (Example Corp.) with modern tech professionals
 - Configure OpenLDAP meta backend for result aggregation
 - Generate ECC GPG keys for all demo users (passphrase = email)
 - Create Passbolt admin user 'ada' (exists in LDAP before creation)
-- Demonstrate enterprise LDAP aggregation for company mergers
+- Demonstrate LDAP aggregation via meta backend
 
 #### Basic Single LDAP Setup
 Use the original setup script for single directory:
@@ -108,9 +136,53 @@ This script provides the basic single LDAP setup without aggregation.
 
 > Demo Credentials: All passwords and credentials in this repository are for demonstration purposes only. In production, use strong, unique credentials and proper certificate authorities.
 
-## Multi-Domain LDAP Synchronization
+## LDAP Integration Approaches
 
-This setup demonstrates multi-domain LDAP directory synchronization using Passbolt's PHP configuration. Multiple LDAP directories are aggregated at the application level for unified user and group management.
+This repository demonstrates **two different LDAP integration patterns** for educational purposes, showing both application-level and infrastructure-level approaches to multi-directory synchronization.
+
+### Approach Comparison
+
+| Aspect | Direct Multi-Domain LDAP | LDAP Aggregation via Meta Backend |
+|--------|--------------------------|-----------------------------------|
+| **Architecture** | Application-level aggregation | Infrastructure-level aggregation |
+| **Complexity** | Simpler (no proxy layer) | More complex (proxy layer) |
+| **Passbolt Config** | Multi-domain PHP configuration | Single unified LDAP endpoint |
+| **Use Case** | Applications with native multi-domain support | Environments requiring unified LDAP namespace |
+| **Educational Value** | Shows application-level integration patterns | Shows infrastructure-level integration patterns |
+| **Setup Script** | `./scripts/setup-dual-ldap.sh` | `./scripts/setup-aggregation-demo.sh` |
+| **Configuration** | `config/passbolt/ldap.php` | `config/passbolt/ldap-aggregation.php` |
+
+### Direct Multi-Domain LDAP Approach
+
+This approach uses Passbolt's native multi-domain LDAP capabilities to connect directly to multiple LDAP servers. Passbolt handles the aggregation at the application level.
+
+**Architecture:**
+```
+Passbolt → LDAP1 (dc=passbolt,dc=local)
+        → LDAP2 (dc=example,dc=com)
+```
+
+**Benefits:**
+- Uses Passbolt's built-in multi-domain LDAP support
+- No additional infrastructure components
+- Simpler certificate management
+- Application-level integration
+
+### LDAP Aggregation via Meta Backend Approach
+
+This approach uses OpenLDAP meta backend to create a unified LDAP namespace that aggregates results from multiple backend LDAP servers. Passbolt connects to a single unified endpoint.
+
+**Architecture:**
+```
+Passbolt → LDAP Meta (dc=unified,dc=local) → LDAP1 (dc=passbolt,dc=local)
+                                        → LDAP2 (dc=example,dc=com)
+```
+
+**Benefits:**
+- Transparent to applications (single LDAP endpoint)
+- Unified namespace for all applications
+- Infrastructure-level integration
+- Single point of LDAP configuration
 
 ### Configuration
 
@@ -213,6 +285,8 @@ Passbolt is configured via the PHP file (`config/passbolt/ldap.php`) which defin
 
 ## Services Overview
 
+### Core Services (Both Approaches)
+
 | Service   | URL                       | Credentials        | Purpose |
 |-----------|---------------------------|-------------------|---------|
 | Passbolt  | https://passbolt.local    | Created during setup | Main application |
@@ -221,6 +295,12 @@ Passbolt is configured via the PHP file (`config/passbolt/ldap.php`) which defin
 | LDAP1     | ldap1.local:389 (LDAPS/STARTTLS) | cn=readonly,dc=passbolt,dc=local / readonly | Passbolt Inc. directory |
 | LDAP2     | ldap2.local:389 (LDAPS/STARTTLS) | cn=reader,dc=example,dc=com / reader123 | Example Corp directory |
 | Valkey    | valkey:6379 (internal)    | N/A               | Session storage and caching |
+
+### LDAP Aggregation Approach (Additional Service)
+
+| Service   | URL                       | Credentials        | Purpose |
+|-----------|---------------------------|-------------------|---------|
+| LDAP Meta | ldap-meta.local:3389 (LDAP), :3636 (LDAPS) | cn=readonly,dc=unified,dc=local / readonly | Aggregation proxy |
 
 ## Valkey Session Handling
 

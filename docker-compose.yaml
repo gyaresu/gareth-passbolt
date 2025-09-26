@@ -223,6 +223,43 @@ services:
         aliases:
           - ldap2.local
 
+  # LDAP Meta Backend - Aggregation Proxy
+  # Provides unified LDAP interface for Passbolt synchronization
+  # Aggregates results from ldap1 and ldap2 into unified namespace
+  ldap-meta:
+    image: osixia/openldap:1.5.0
+    container_name: ldap-meta
+    hostname: ldap-meta.local
+    restart: unless-stopped
+    depends_on:
+      - ldap1
+      - ldap2
+    environment:
+      LDAP_ORGANISATION: "Unified Directory"
+      LDAP_DOMAIN: "unified.local"
+      LDAP_ADMIN_PASSWORD: "secret"
+      LDAP_CONFIG_PASSWORD: "secret"
+      LDAP_TLS: "true"
+      LDAP_TLS_VERIFY_CLIENT: "never"
+      LDAP_BASE_DN: "dc=unified,dc=local"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "readonly"
+    ports:
+      - "3389:389"   # LDAP
+      - "3636:636"    # LDAPS
+    volumes:
+      - ./config/ldap-meta/slapd.conf:/etc/ldap/slapd.conf:ro
+      - ./config/ldap-meta/entrypoint.sh:/container/service/slapd/startup/50startup:ro
+      - ldap_meta_data:/var/lib/ldap
+      - ldap_meta_config:/etc/ldap/slapd.d
+      - ldap_meta_certs:/container/service/slapd/assets/certs
+    command: ["--loglevel", "stats", "--loglevel", "conns", "filter", "config"]
+    networks:
+      default:
+        aliases:
+          - ldap-meta.local
+
 volumes:
   database_volume:
     name: ${COMPOSE_PROJECT_NAME}_database_volume
@@ -246,3 +283,9 @@ volumes:
     name: ${COMPOSE_PROJECT_NAME}_ldap2_config
   ldap2_certs:
     name: ${COMPOSE_PROJECT_NAME}_ldap2_certs
+  ldap_meta_data:
+    name: ${COMPOSE_PROJECT_NAME}_ldap_meta_data
+  ldap_meta_config:
+    name: ${COMPOSE_PROJECT_NAME}_ldap_meta_config
+  ldap_meta_certs:
+    name: ${COMPOSE_PROJECT_NAME}_ldap_meta_certs
