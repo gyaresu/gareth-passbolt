@@ -22,6 +22,10 @@ LDAP_BASE_DN="dc=example,dc=com"
 LDAP_USERS_DN="ou=people,dc=example,dc=com"
 LDAP_GROUPS_DN="ou=teams,dc=example,dc=com"
 
+# Unified namespace DN format for LDAP meta backend aggregation
+# This ensures proper group membership resolution through the aggregator
+UNIFIED_USERS_DN="ou=people,dc=example,dc=unified,dc=local"
+
 # Function to check if LDAP command succeeded
 check_ldap_command() {
     if [ $? -ne 0 ]; then
@@ -195,6 +199,8 @@ rm /tmp/lisa.ldif
 verify_user_exists "Lisa Rodriguez"
 
 # Create Example Corp groups
+# Note: Using unified namespace DN format (dc=example,dc=unified,dc=local) in uniqueMember attributes
+# to ensure proper group membership resolution through LDAP meta backend aggregation
 echo "Creating Example Corp groups..."
 
 # Project Teams
@@ -205,9 +211,9 @@ objectClass: groupOfUniqueNames
 objectClass: top
 cn: project-teams
 description: Project Teams - cross-functional project groups
-uniqueMember: cn=John Smith,$LDAP_USERS_DN
-uniqueMember: cn=Sarah Johnson,$LDAP_USERS_DN
-uniqueMember: cn=Michael Chen,$LDAP_USERS_DN
+uniqueMember: cn=John Smith,$UNIFIED_USERS_DN
+uniqueMember: cn=Sarah Johnson,$UNIFIED_USERS_DN
+uniqueMember: cn=Michael Chen,$UNIFIED_USERS_DN
 EOF
 docker compose cp /tmp/project_teams.ldif $LDAP_CONTAINER:/tmp/project_teams.ldif
 docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/project_teams.ldif || echo "Group may already exist"
@@ -222,7 +228,7 @@ objectClass: groupOfUniqueNames
 objectClass: top
 cn: security
 description: Security Team - information security specialists
-uniqueMember: cn=Sarah Johnson,$LDAP_USERS_DN
+uniqueMember: cn=Sarah Johnson,$UNIFIED_USERS_DN
 EOF
 docker compose cp /tmp/security.ldif $LDAP_CONTAINER:/tmp/security.ldif
 docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/security.ldif || echo "Group may already exist"
@@ -237,7 +243,7 @@ objectClass: groupOfUniqueNames
 objectClass: top
 cn: operations
 description: Operations Team - infrastructure and deployment
-uniqueMember: cn=Michael Chen,$LDAP_USERS_DN
+uniqueMember: cn=Michael Chen,$UNIFIED_USERS_DN
 EOF
 docker compose cp /tmp/operations.ldif $LDAP_CONTAINER:/tmp/operations.ldif
 docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/operations.ldif || echo "Group may already exist"
@@ -252,7 +258,7 @@ objectClass: groupOfUniqueNames
 objectClass: top
 cn: creative
 description: Creative Team - design and user experience
-uniqueMember: cn=Lisa Rodriguez,$LDAP_USERS_DN
+uniqueMember: cn=Lisa Rodriguez,$UNIFIED_USERS_DN
 EOF
 docker compose cp /tmp/creative.ldif $LDAP_CONTAINER:/tmp/creative.ldif
 docker compose exec $LDAP_CONTAINER ldapadd -x -H $LDAP_URL -D "$LDAP_ADMIN_DN" -w "$LDAP_ADMIN_PASSWORD" -f /tmp/creative.ldif || echo "Group may already exist"

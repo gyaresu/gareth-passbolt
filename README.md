@@ -211,11 +211,58 @@ Passbolt → LDAP Meta (dc=unified,dc=local) → LDAP1 (dc=passbolt,dc=local)
                                         → LDAP2 (dc=example,dc=com)
 ```
 
+**Directory Structure Preservation:**
+The aggregation preserves the different organizational structures from both companies:
+
+**LDAP1 (Passbolt Inc.) - Historical Computing Pioneers:**
+```
+dc=passbolt,dc=local
+├── ou=users
+│   ├── cn=ada (Ada Lovelace)
+│   ├── cn=betty (Betty Holberton)
+│   ├── cn=carol (Carol Shaw)
+│   ├── cn=dame (Dame Shirley)
+│   └── cn=edith (Edith Clarke)
+└── ou=groups
+    ├── cn=passbolt
+    ├── cn=developers
+    ├── cn=demoteam
+    └── cn=admins
+```
+
+**LDAP2 (Example Corp) - Modern Tech Professionals:**
+```
+dc=example,dc=com
+├── ou=people          # Different OU name!
+│   ├── cn=John Smith
+│   ├── cn=Sarah Johnson
+│   ├── cn=Michael Chen
+│   └── cn=Lisa Rodriguez
+└── ou=teams           # Different OU name!
+    ├── cn=project-teams
+    ├── cn=security
+    ├── cn=operations
+    └── cn=creative
+```
+
+**Unified Namespace (What Passbolt Sees):**
+```
+dc=unified,dc=local
+├── dc=passbolt,dc=unified,dc=local (mapped from dc=passbolt,dc=local)
+│   ├── ou=users
+│   └── ou=groups
+└── dc=example,dc=unified,dc=local (mapped from dc=example,dc=com)
+    ├── ou=people
+    └── ou=teams
+```
+
 **Benefits:**
 - Transparent to applications (single LDAP endpoint)
 - Unified namespace for all applications
 - Infrastructure-level integration
 - Single point of LDAP configuration
+
+**Technical Note:** The setup scripts automatically handle LDAP meta backend DN transformation requirements. Group memberships use the unified namespace DN format to ensure proper synchronization through the aggregator.
 
 ### Configuration
 
@@ -1040,6 +1087,48 @@ docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
 - Verify users have activated their Passbolt accounts
 - Check that groups use `groupOfUniqueNames` object class
 - Ensure member references use full DNs
+
+#### LDAP Meta Backend DN Transformation Issue
+**Symptoms**: Users sync to Passbolt but group memberships fail to sync, or incorrect users appear in groups
+
+**Root Cause**: The LDAP meta backend's `suffixmassage` feature doesn't automatically transform DN references in attributes like `uniqueMember`. Group memberships contain DNs in the original backend format instead of the unified namespace format.
+
+**Diagnosis**:
+```bash
+# Check group membership DNs through aggregator
+docker exec ldap-meta ldapsearch -H ldap://localhost:389 -D "cn=admin,dc=unified,dc=local" -w "secret" -b "dc=unified,dc=local" "(cn=operations)"
+
+# Check user DN in unified namespace
+docker exec ldap-meta ldapsearch -H ldap://localhost:389 -D "cn=admin,dc=unified,dc=local" -w "secret" -b "dc=unified,dc=local" "(mail=user@example.com)"
+```
+
+**Solution**: The setup scripts have been updated to use the correct DN format from the start. If you encounter this issue with existing deployments, update group membership DNs to use the unified namespace format:
+```bash
+# Create LDIF file to fix group memberships
+cat > fix_group_memberships.ldif << EOF
+# Fix operations group
+dn: cn=operations,ou=teams,dc=example,dc=com
+changetype: modify
+replace: uniqueMember
+uniqueMember: cn=User Name,ou=people,dc=example,dc=unified,dc=local
+
+# Fix project-teams group
+dn: cn=project-teams,ou=teams,dc=example,dc=com
+changetype: modify
+replace: uniqueMember
+uniqueMember: cn=User Name,ou=people,dc=example,dc=unified,dc=local
+EOF
+
+# Apply the fix to backend LDAP server
+docker exec -i ldap2 ldapmodify -H ldap://localhost:389 -D "cn=admin,dc=example,dc=com" -w "Ex4mple123" < fix_group_memberships.ldif
+
+# Clean up
+rm fix_group_memberships.ldif
+```
+
+**Prevention**: The setup scripts now create groups with the correct DN format automatically. This issue should not occur in fresh deployments.
+
+**Verification**: After applying the fix, run directory sync in Passbolt to verify group memberships are correctly synchronized.
 
 ### SSO Login Failures
 **Symptoms**: SSO login doesn't work
