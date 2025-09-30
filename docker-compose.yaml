@@ -147,14 +147,22 @@ services:
       - ./keys/ldap2-ca.crt:/etc/ssl/certs/ldap2-ca.crt:ro
       - ./keys/ldap2-ca.crt:/usr/local/share/ca-certificates/ldap2-ca.crt:ro
       - ./subscription_key.txt:/etc/passbolt/subscription_key.txt:ro
+
     command:
       - /bin/bash
-      - -c
+      - -ceu
       - |
         update-ca-certificates
-        chown www-data:www-data /etc/passbolt/jwt
-        chmod 755 /etc/passbolt/jwt
+
+        chown -Rf root:www-data /etc/passbolt/jwt/
+        chmod 750 /etc/passbolt/jwt/
+
+        # Only chmod key files if present
+        [ -f /etc/passbolt/jwt/jwt.key ] && chmod 640 /etc/passbolt/jwt/jwt.key || true
+        [ -f /etc/passbolt/jwt/jwt.pem ] && chmod 640 /etc/passbolt/jwt/jwt.pem || true
+
         /usr/bin/wait-for.sh -t 0 db:3306 -- /docker-entrypoint.sh
+
     ports:
       - 80:80
       - 443:443
