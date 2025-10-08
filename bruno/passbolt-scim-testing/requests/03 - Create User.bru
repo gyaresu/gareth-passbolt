@@ -1,0 +1,32 @@
+meta {
+  name: Create User
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{scimBaseUrl}}/Users
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "schemas": [
+      "urn:ietf:params:scim:schemas:core:2.0:User"
+    ],
+    "userName": "first",
+    "name": {
+      "givenName": "First",
+      "familyName": "User"
+    },
+    "emails": [
+      {
+        "value": "first@oops.com",
+        "type": "work",
+        "primary": true
+      }
+    ],
+    "active": true
+  }
+}

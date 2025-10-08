@@ -1,0 +1,29 @@
+meta {
+  name: Search Users
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{scimBaseUrl}}/Users/.search
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "schemas": [
+      "urn:ietf:params:scim:api:messages:2.0:SearchRequest"
+    ],
+    "filter": "userName eq \"brunouser\"",
+    "startIndex": 1,
+    "count": 100,
+    "attributes": [
+      "userName",
+      "name",
+      "emails",
+      "active"
+    ]
+  }
+}
+

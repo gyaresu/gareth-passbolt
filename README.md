@@ -5,86 +5,57 @@
 ## What This Demonstrates
 
 - Passbolt Pro with OIDC SSO integration (Keycloak over HTTPS)
-- LDAP result aggregation from multiple directory servers using OpenLDAP meta backend
-- LDAPS (implicit TLS) for secure LDAP connections with domain-specific certificates
+- Multi-directory LDAP synchronization (aggregation and direct approaches)
+- LDAPS (implicit TLS) for secure LDAP connections
 - SMTPS for secure email communication
-- Valkey session handling for improved performance
+- Valkey session handling
 - Certificate automation for development and testing
-- Multi-directory user synchronization for enterprise environments
+- SCIM API testing with Bruno
 
 ## Prerequisites
 
-- Docker and Docker Compose installed
+- Docker and Docker Compose
 - Passbolt Pro subscription key
-- Basic knowledge of LDAP, Keycloak, and Docker
-- Local development environment (macOS/Linux)
+- macOS or Linux
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
-- [LDAP Aggregation](#ldap-aggregation)
+- [LDAP Integration](#ldap-integration)
 - [Services Overview](#services-overview)
-- [LDAPS Configuration](#ldaps-configuration)
 - [Valkey Session Handling](#valkey-session-handling)
 - [Keycloak SSO Configuration](#keycloak-sso-configuration)
 - [SMTP Configuration](#smtp-configuration)
 - [User and Group Management](#user-and-group-management)
 - [Testing and Verification](#testing-and-verification)
+  - [SCIM API Testing with Bruno](#scim-api-testing-with-bruno)
 - [Troubleshooting](#troubleshooting)
 
 ## Quick Start
 
 ### Automated Setup
 
-This repository supports **two different LDAP integration approaches** for educational purposes:
+Choose your LDAP integration approach:
 
-#### Approach 1: Direct Multi-Domain LDAP
-Use the direct multi-domain LDAP setup for application-level aggregation:
-```bash
-./scripts/setup-dual-ldap.sh
-```
-
-**Benefits:**
-- Uses Passbolt's native multi-domain LDAP capabilities
-- No proxy layer required
-- Simpler architecture
-- Application-level integration
-
-**This script will:**
-- Set up LDAP1 (Passbolt Inc.) with historical computing pioneers
-- Set up LDAP2 (Example Corp.) with modern tech professionals
-- Configure Passbolt to connect directly to both LDAP servers
-- Generate ECC GPG keys for all demo users (passphrase = email)
-- Create Passbolt admin user 'ada' (exists in LDAP before creation)
-- Demonstrate direct multi-domain LDAP synchronization
-
-#### Approach 2: LDAP Aggregation via Meta Backend
-Use the aggregation setup for infrastructure-level aggregation:
+**LDAP Aggregation (Default):**
 ```bash
 ./scripts/setup-aggregation-demo.sh
 ```
+OpenLDAP meta backend creates unified namespace. Configure via Passbolt Web UI.
 
-**Benefits:**
-- Uses OpenLDAP meta backend for transparent aggregation
-- Unified namespace for applications
-- Infrastructure-level integration
-- Single LDAP endpoint for applications
+**Direct Multi-Domain:**
+```bash
+./scripts/setup-dual-ldap.sh
+```
+Passbolt connects directly to multiple LDAP servers via PHP configuration.
 
-**This script will:**
-- Set up LDAP1 (Passbolt Inc.) with historical computing pioneers
-- Set up LDAP2 (Example Corp.) with modern tech professionals
-- Configure OpenLDAP meta backend for result aggregation
-- Generate ECC GPG keys for all demo users (passphrase = email)
-- Create Passbolt admin user 'ada' (exists in LDAP before creation)
-- Demonstrate LDAP aggregation via meta backend
-
-#### Basic Single LDAP Setup
-Use the original setup script for single directory:
+**Single LDAP:**
 ```bash
 ./scripts/setup.sh
 ```
+Basic single directory setup.
 
-This script provides the basic single LDAP setup without aggregation.
+All scripts set up LDAP directories, generate GPG keys, and create Passbolt admin user 'ada'. See [LDAP Integration](#ldap-integration) for detailed comparison.
 
 ### Manual Setup
 
@@ -108,7 +79,7 @@ This script provides the basic single LDAP setup without aggregation.
    chmod +x scripts/ldap/*/*.sh scripts/tests/*/*.sh
    ```
 
-5. Start the environment (LDAP aggregation is now default):
+5. Start the environment:
    ```bash
    docker compose up -d
    ```
@@ -123,268 +94,169 @@ This script provides the basic single LDAP setup without aggregation.
    ./scripts/ldap/setup/create-admin.sh
    ```
 
-8. Configure LDAPS in Passbolt:
-   - Log in to Passbolt as an administrator
+8. Configure LDAP in Passbolt:
+   - Log in to Passbolt as administrator
    - Go to Organization Settings > Users Directory
-   - Configure LDAPS settings (see LDAPS Configuration section)
+   - Configure LDAP settings (see [LDAP Integration](#ldap-integration))
 
-> Important: The order of operations is crucial. LDAP users must be set up before creating the Passbolt admin user to ensure proper synchronization.
+**Important Notes:**
+- LDAP users must be set up before creating the Passbolt admin user
+- SMTP: Set "Use TLS" to No (SMTPS implicit TLS is used via `ssl://smtp.local`)
+- Requires valid Passbolt Pro subscription key in `subscription_key.txt`
+- Demo credentials are for testing only - use strong credentials in production
 
-> SMTP Configuration Note: When configuring SMTP in Passbolt UI, set "Use TLS" to No because SMTPS (implicit TLS) is used (enabled via `ssl://smtp.local`). The certificate CN must match `smtp.local`.
+## LDAP Integration
 
-> Required: Valid Passbolt Pro subscription key in `subscription_key.txt` in the project root.
-
-> Demo Credentials: All passwords and credentials in this repository are for demonstration purposes only. In production, use strong, unique credentials and proper certificate authorities.
-
-## LDAP Integration Approaches
-
-This repository demonstrates **two different LDAP integration patterns** for educational purposes, showing both application-level and infrastructure-level approaches to multi-directory synchronization.
+Two approaches for multi-directory LDAP integration for educational comparison.
 
 ### Approach Comparison
 
-| Aspect | Direct Multi-Domain LDAP | LDAP Aggregation via Meta Backend |
-|--------|--------------------------|-----------------------------------|
-| **Architecture** | Application-level aggregation | Infrastructure-level aggregation |
-| **Complexity** | Simpler (no proxy layer) | More complex (proxy layer) |
-| **Passbolt Config** | Multi-domain PHP configuration | Web UI configuration only (no PHP config needed) |
-| **Use Case** | Applications with native multi-domain support | Environments requiring unified LDAP namespace |
-| **Educational Value** | Shows application-level integration patterns | Shows infrastructure-level integration patterns |
-| **Setup Script** | `./scripts/setup-dual-ldap.sh` | `./scripts/setup-aggregation-demo.sh` |
-| **Configuration** | `config/passbolt/ldap.php` | Web UI only |
+| Aspect | Aggregation (Default) | Direct Multi-Domain |
+|--------|----------------------|---------------------|
+| Architecture | Infrastructure proxy | Application-level |
+| Configuration | Web UI or PHP file | Web UI or PHP file |
+| LDAP Endpoint | Single unified (ldap-meta) | Multiple direct (ldap1, ldap2) |
+| Setup Script | `setup-aggregation-demo.sh` | `setup-dual-ldap.sh` |
 
-### Direct Multi-Domain LDAP Approach
+### Directory Structure
 
-This approach uses Passbolt's native multi-domain LDAP capabilities to connect directly to multiple LDAP servers. Passbolt handles the aggregation at the application level.
-
-**Architecture:**
+**LDAP1 (Passbolt Inc.) - dc=passbolt,dc=local:**
 ```
-Passbolt → LDAP1 (dc=passbolt,dc=local) - LDAPS:636
-        → LDAP2 (dc=example,dc=com)     - LDAPS:636
+ou=users: Ada, Betty, Carol, Dame, Edith
+ou=groups: passbolt, developers, demoteam, admins
 ```
 
-**Benefits:**
-- Uses Passbolt's built-in multi-domain LDAP support
-- No additional infrastructure components
-- Simpler certificate management
-- Application-level integration
-- LDAPS encryption working (port 636 with SSL/TLS)
-- Command-line synchronization working
-
-**Configuration:** `config/passbolt/ldap.php` (PHP configuration file)
-**Sync Command:** `docker compose exec passbolt su -s /bin/bash -c "/usr/share/php/passbolt/bin/cake directory_sync all --persist --quiet" www-data`
-
-**Tested Results:**
-- Users imported from both LDAP directories (Ada, Betty, Carol, Lisa)
-- Groups created from both directories (8 groups total)
-- LDAPS encryption confirmed (port 636)
-- Certificate validation working
-
-### LDAP Aggregation via Meta Backend Approach
-
-This approach uses OpenLDAP meta backend to create a unified LDAP namespace that aggregates results from multiple backend LDAP servers. Passbolt connects to a single unified endpoint.
-
-**Why no PHP configuration is needed:**
-- The web UI provides all necessary LDAP connection settings (host, port, credentials, base DN)
-- The aggregation proxy handles the complex multi-directory aggregation transparently
-- Passbolt sees a single unified LDAP namespace, just like any other LDAP server
-- This demonstrates true infrastructure-level aggregation
-
-**Important Configuration:**
-- `PASSBOLT_SECURITY_DIRECTORY_SYNC_ENDPOINTS_DISABLED: "false"` must be set to enable web UI directory sync
-- This allows configuration through `/app/administration/users-directory` in the web interface
-
-**Web UI Configuration Steps:**
-1. Navigate to `/app/administration/users-directory` in Passbolt
-2. Configure LDAP connection:
-   - **Host**: `ldap-meta.local`
-   - **Port**: `636` (LDAPS) - use LDAPS port for encrypted connection
-   - **Base DN**: `dc=unified,dc=local`
-   - **Username**: `cn=admin,dc=unified,dc=local`
-   - **Password**: `secret`
-   - **Use SSL**: `true` (LDAPS over port 636)
-3. Test connection and save configuration
-4. Run directory synchronization
-
-**Architecture:**
+**LDAP2 (Example Corp) - dc=example,dc=com:**
 ```
-Passbolt → LDAP Meta (dc=unified,dc=local) → LDAP1 (dc=passbolt,dc=local)
-                                        → LDAP2 (dc=example,dc=com)
+ou=people: John, Sarah, Michael, Lisa
+ou=teams: project-teams, security, operations, creative
 ```
 
-**Directory Structure Preservation:**
-The aggregation preserves the different organizational structures from both companies:
-
-**LDAP1 (Passbolt Inc.) - Historical Computing Pioneers:**
+**Aggregation Unified View (dc=unified,dc=local):**
 ```
-dc=passbolt,dc=local
-├── ou=users
-│   ├── cn=ada (Ada Lovelace)
-│   ├── cn=betty (Betty Holberton)
-│   ├── cn=carol (Carol Shaw)
-│   ├── cn=dame (Dame Shirley)
-│   └── cn=edith (Edith Clarke)
-└── ou=groups
-    ├── cn=passbolt
-    ├── cn=developers
-    ├── cn=demoteam
-    └── cn=admins
+dc=passbolt,dc=unified,dc=local → LDAP1
+dc=example,dc=unified,dc=local → LDAP2
 ```
 
-**LDAP2 (Example Corp) - Modern Tech Professionals:**
-```
-dc=example,dc=com
-├── ou=people          # Different OU name!
-│   ├── cn=John Smith
-│   ├── cn=Sarah Johnson
-│   ├── cn=Michael Chen
-│   └── cn=Lisa Rodriguez
-└── ou=teams           # Different OU name!
-    ├── cn=project-teams
-    ├── cn=security
-    ├── cn=operations
-    └── cn=creative
-```
+### Aggregation Approach Configuration
 
-**Unified Namespace (What Passbolt Sees):**
-```
-dc=unified,dc=local
-├── dc=passbolt,dc=unified,dc=local (mapped from dc=passbolt,dc=local)
-│   ├── ou=users
-│   └── ou=groups
-└── dc=example,dc=unified,dc=local (mapped from dc=example,dc=com)
-    ├── ou=people
-    └── ou=teams
-```
+Passbolt connects to single meta backend. Configure via Web UI or use included PHP configuration (`config/passbolt/ldap.php`).
 
-**Benefits:**
-- Transparent to applications (single LDAP endpoint)
-- Unified namespace for all applications
-- Infrastructure-level integration
-- Single point of LDAP configuration
+**LDAP Meta Settings:**
+- Host: `ldap-meta.local`
+- Port: `636` (LDAPS)
+- Base DN: `dc=unified,dc=local`
+- Username: `cn=readonly,dc=passbolt,dc=unified,dc=local` (PHP config) or `cn=admin,dc=unified,dc=local` (Web UI)
+- Password: `readonly` (PHP config) or `secret` (Web UI)
+- Use SSL: `true`
 
-**Technical Note:** The setup scripts automatically handle LDAP meta backend DN transformation requirements. Group memberships use the unified namespace DN format to ensure proper synchronization through the aggregator.
+The meta backend transparently proxies to both LDAP1 and LDAP2.
 
-### Configuration
+### Direct Multi-Domain Approach Configuration
 
-Multi-domain LDAP synchronization is the default setup:
+Passbolt connects directly to both LDAP servers. Configure via Passbolt Web UI or use the included PHP configuration example (`config/passbolt/ldap.php`).
+
+**PHP Configuration Example:**
+
+The repository includes a ready-to-use multi-domain configuration at `config/passbolt/ldap.php` with two domains:
+
+**LDAP1 (Passbolt domain):**
+- Host: `ldap1.local`
+- Port: `636` (LDAPS)
+- Base DN: `dc=passbolt,dc=local`
+- Username: `cn=readonly,dc=passbolt,dc=local`
+- Password: `readonly`
+- Paths: `ou=users`, `ou=groups`
+
+**LDAP2 (Example domain):**
+- Host: `ldap2.local`
+- Port: `636` (LDAPS)
+- Base DN: `dc=example,dc=com`
+- Username: `cn=reader,dc=example,dc=com`
+- Password: `reader123`
+- Paths: `ou=people`, `ou=teams`
+
+**Note:** The PHP config is not used by default (Web UI configuration takes precedence). To use the PHP config, mount it into the Passbolt container.
+
+**Sync Command:**
 ```bash
-docker compose up -d
+docker compose exec passbolt su -s /bin/bash -c "/usr/share/php/passbolt/bin/cake directory_sync all --persist --quiet" www-data
 ```
 
-For single LDAP directory (basic demo):
+### Security (LDAPS)
+
+All LDAP connections use LDAPS (port 636) with SSL/TLS encryption.
+
+**Certificate Management:**
+- osixia/openldap auto-generates self-signed certificates
+- `./scripts/fix-ldaps-certificates.sh` extracts certificates from containers
+- Certificates bundled into Passbolt container at build time
+
+**Test LDAPS:**
 ```bash
-docker compose -f docker-compose.single-ldap.yaml up -d
+docker compose exec passbolt openssl s_client -connect ldap:636 \
+  -servername ldap.local -CAfile /etc/ssl/certs/ldaps_bundle.crt -brief
 ```
 
-### Architecture
+### LDAP Server Configuration
 
-- **ldap1**: Passbolt Inc. directory (dc=passbolt,dc=local)
-- **ldap2**: Example Corp directory (dc=example,dc=com)
-- **Passbolt**: Aggregates users and groups from both directories via PHP configuration
+**osixia/openldap Environment Variables:**
+```yaml
+LDAP_ORGANISATION: "Passbolt"
+LDAP_DOMAIN: "passbolt.local"
+LDAP_BASE_DN: "dc=passbolt,dc=local"
+LDAP_ADMIN_PASSWORD: "P4ssb0lt"
+LDAP_TLS: "true"
+LDAP_READONLY_USER: "true"
+LDAP_READONLY_USER_USERNAME: "readonly"
+LDAP_READONLY_USER_PASSWORD: "readonly"
+```
 
-### Multi-Domain Configuration
+**Connection Methods:**
+- LDAPS (implicit TLS): Port 636 - Used by Passbolt
+- STARTTLS: Port 389 - Alternative option
 
-- **LDAP1**: `ldap1.local:636` (LDAPS) - Passbolt Inc. (Historical computing pioneers)
-- **LDAP2**: `ldap2.local:636` (LDAPS) - Example Corp (Modern tech professionals)
-- **Configuration**: `config/passbolt/ldap.php` - Defines both domains with LDAPS security
+**Certificate Location in Container:**
+- `/container/service/slapd/assets/certs/ldap.crt` - Server certificate
+- `/container/service/slapd/assets/certs/ca.crt` - CA certificate
+- `/container/service/slapd/assets/certs/ldap.key` - Private key
 
-### Technical Implementation
+### Directory Synchronization Settings
 
-The multi-domain LDAP synchronization uses Passbolt's PHP configuration to achieve application-level aggregation:
+**Passbolt Web UI (Organization Settings > Directory):**
+- Users Path: `ou=users`
+- Group Path: `ou=groups`
+- User Filter: `(objectClass=inetOrgPerson)`
+- Group Filter: `(objectClass=groupOfUniqueNames)`
+- Username: `mail`
+- Email: `mail`
+- First Name: `givenName`
+- Last Name: `sn`
 
-#### **Multi-Domain Configuration**
-- **Purpose**: Defines multiple LDAP domains in a single PHP configuration file
-- **LDAP1 domain**: `passbolt` domain connecting to `ldap1.local:389`
-- **LDAP2 domain**: `example` domain connecting to `ldap2.local:389`
-- **Authentication**: Each domain uses its own service account credentials
-
-#### **Application-Level Aggregation**
-- **Sync process**: Passbolt queries both LDAP servers during directory sync
-- **User aggregation**: Users from both domains imported into single Passbolt instance
-- **Group aggregation**: Groups from both domains created with proper memberships
-- **Field mapping**: OpenLDAP `uniqueMember` attribute mapped for group membership resolution
-
-#### **Key Configuration Elements**
-- **Domain definitions**: Each LDAP server defined as separate domain in PHP config
-- **Field mapping**: `fieldsMapping` specifies `uniqueMember` for OpenLDAP group membership
-- **Object classes**: `inetOrgPerson` for users, `groupOfUniqueNames` for groups
-- **Directory paths**: Domain-specific `user_path` and `group_path` for different OU structures
-
-#### **Why This Works**
-- **Native support**: Uses Passbolt's built-in multi-domain LDAP capabilities
-- **No proxy needed**: Direct connection to each LDAP server
-- **Automatic sync**: Hourly cron job keeps users and groups synchronized
-- **Scalable**: Can add more domains by extending the PHP configuration
-
-### Implementation Approach
-
-This repository implements multi-domain LDAP synchronization using Passbolt's native PHP configuration:
-
-#### **Configuration Architecture**
-- **Base approach**: PHP configuration file defines multiple LDAP domains
-- **No proxy needed**: Direct connections to each LDAP server
-- **Configuration method**: Static PHP file (`config/passbolt/ldap.php`) for version control
-
-#### **Key Implementation Files**
-- **`config/passbolt/ldap.php`**: Multi-domain LDAP configuration with field mappings
-- **`docker-compose.yaml`**: Service orchestration for both LDAP servers
-- **`/etc/cron.hourly/passbolt-directory-sync`**: Automatic synchronization script
-
-#### **Configuration Strategy**
-- **Multi-domain setup**: Each LDAP server defined as separate domain
-- **Field mapping**: Explicit mapping of `uniqueMember` for group membership resolution
-- **Automatic sync**: Hourly cron job ensures continuous synchronization
-- **Domain-specific paths**: Custom `user_path` and `group_path` for different directory structures
+**Sync Behavior:**
+One-way read-only from LDAP to Passbolt. LDAP is the source of truth.
 
 ### References
 
-- **Passbolt LDAP Documentation**: https://www.passbolt.com/configure/ldap
-- **LdapRecord Multi-Domain**: https://ldaprecord.com/docs/laravel/v2/configuration
-- **OpenLDAP Admin Guide**: https://www.openldap.org/doc/admin24/
-- **RFC 4511 (LDAP Protocol)**: https://tools.ietf.org/html/rfc4511
-
-### Passbolt Configuration
-
-Passbolt is configured via the PHP file (`config/passbolt/ldap.php`) which defines both LDAP domains:
-
-**LDAP1 (Passbolt Inc.):**
-- Server: ldap1.local
-- Port: 389
-- Base DN: dc=passbolt,dc=local
-- Username: cn=readonly,dc=passbolt,dc=local
-- Password: readonly
-
-**LDAP2 (Example Corp.):**
-- Server: ldap2.local
-- Port: 389
-- Base DN: dc=example,dc=com
-- Username: cn=reader,dc=example,dc=com
-- Password: reader123
-
-**Note**: Configuration is handled entirely through the PHP file - no web UI LDAP configuration needed
+- Passbolt LDAP: https://www.passbolt.com/configure/ldap
+- LdapRecord Multi-Domain: https://ldaprecord.com/docs/laravel/v2/configuration
+- OpenLDAP Admin: https://www.openldap.org/doc/admin24/
 
 ## Services Overview
-
-### Core Services (Both Approaches)
 
 | Service   | URL                       | Credentials        | Purpose |
 |-----------|---------------------------|-------------------|---------|
 | Passbolt  | https://passbolt.local    | Created during setup | Main application |
 | Keycloak  | https://keycloak.local:8443 | admin / admin    | SSO provider |
 | SMTP4Dev  | http://smtp.local:5050    | N/A               | Email testing |
-| LDAP1     | ldap1.local:389 (LDAPS/STARTTLS) | cn=readonly,dc=passbolt,dc=local / readonly | Passbolt Inc. directory |
-| LDAP2     | ldap2.local:389 (LDAPS/STARTTLS) | cn=reader,dc=example,dc=com / reader123 | Example Corp directory |
+| LDAP1     | ldap1.local:636 (LDAPS) | cn=readonly,dc=passbolt,dc=local / readonly | Passbolt Inc. directory |
+| LDAP2     | ldap2.local:636 (LDAPS) | cn=reader,dc=example,dc=com / reader123 | Example Corp directory |
+| LDAP Meta | ldap-meta.local:636 (LDAPS) | cn=admin,dc=unified,dc=local / secret | Aggregation proxy (aggregation approach) |
 | Valkey    | valkey:6379 (internal)    | N/A               | Session storage and caching |
-
-### LDAP Aggregation Approach (Additional Service)
-
-| Service   | URL                       | Credentials        | Purpose |
-|-----------|---------------------------|-------------------|---------|
-| LDAP Meta | ldap-meta.local:3389 (LDAP), :3636 (LDAPS) | cn=readonly,dc=unified,dc=local / readonly | Aggregation proxy |
 
 ## Valkey Session Handling
 
-This setup uses Valkey for session storage instead of file-based sessions. Valkey is Redis-compatible and provides better performance and scalability.
+Valkey provides Redis-compatible session storage for better performance than file-based sessions.
 
 ### Configuration
 
@@ -418,7 +290,7 @@ docker compose exec valkey valkey-cli keys "*session*"
 
 ## Environment Variables Configuration
 
-The Docker Compose configuration uses environment variables that are documented in the official Passbolt documentation:
+Environment variables documented in official Passbolt documentation:
 
 ### Core Application Variables
 - `APP_FULL_BASE_URL` - Passbolt application URL
@@ -439,239 +311,18 @@ The Docker Compose configuration uses environment variables that are documented 
 - `SESSION_DEFAULTS` - Session storage method
 
 ### Important Notes
-- **Directory Sync detailed configuration** (host, port, credentials, filters) is done via Passbolt Web UI, not environment variables
-- **PHP TLS configuration** is handled in `config/php/ssl.ini`, not as Passbolt environment variables
-- All environment variables used are documented in the official Passbolt documentation
-
-## LDAPS Configuration
-
-### Security Features
-
-This setup implements LDAPS (LDAP over SSL/TLS) for secure directory synchronization:
-
-- **Encryption**: All LDAP connections use LDAPS (port 636) with SSL/TLS
-- **Certificate Validation**: Domain-specific CA certificates for certificate validation
-- **Authentication**: Read-only LDAP service accounts
-- **Multi-Domain**: Both LDAP domains use encrypted connections
-
-### Configuration Details
-
-**LDAP1 (Passbolt Inc.):**
-- Server: ldap1.local
-- Port: 636 (LDAPS)
-- Security: `use_ssl => true`
-- Certificate: Domain-specific CA certificate validation
-
-**LDAP2 (Example Corp.):**
-- Server: ldap2.local  
-- Port: 636 (LDAPS)
-- Security: `use_ssl => true`
-- Certificate: Domain-specific CA certificate validation
-
-### Certificate Management
-
-The setup uses domain-specific CA certificates for LDAPS connections:
-
-- **ldap1-ca.crt**: CA certificate for ldap1.local domain
-- **ldap2-ca.crt**: CA certificate for ldap2.local domain
-- **Certificate validation**: `LDAP_OPT_X_TLS_REQUIRE_CERT => LDAP_OPT_X_TLS_NEVER` for self-signed certs
-
-### Testing LDAPS
-
-```bash
-# Test LDAPS connectivity
-docker compose exec passbolt php -r "
-\$ldap = ldap_connect('ldaps://ldap1.local', 636);
-ldap_set_option(\$ldap, LDAP_OPT_PROTOCOL_VERSION, 3);
-ldap_set_option(\$ldap, LDAP_OPT_X_TLS_REQUIRE_CERT, LDAP_OPT_X_TLS_NEVER);
-\$bind = ldap_bind(\$ldap, 'cn=readonly,dc=passbolt,dc=local', 'readonly');
-echo \$bind ? 'LDAPS: SUCCESS' : 'LDAPS: FAILED';
-ldap_close(\$ldap);
-"
-
-# Test Passbolt directory sync with LDAPS
-docker compose exec passbolt su -s /bin/bash -c "/usr/share/php/passbolt/bin/cake directory_sync all --persist --quiet" www-data
-```
-
-## LDAP Configuration
-
-### osixia/openldap Docker Image
-
-This setup uses the osixia/openldap:1.5.0 Docker image, which provides a fully configured OpenLDAP server with TLS support. The image is based on osixia/light-baseimage and includes automatic certificate generation and LDAP configuration.
-
-### LDAP Server Environment Variables
-
-The LDAP container is configured with the following environment variables:
-
-```yaml
-# Basic LDAP Configuration
-LDAP_ORGANISATION: "Passbolt"
-LDAP_DOMAIN: "passbolt.local"
-LDAP_BASE_DN: "dc=passbolt,dc=local"
-LDAP_ADMIN_PASSWORD: "P4ssb0lt"
-LDAP_CONFIG_PASSWORD: "P4ssb0lt"
-
-# TLS Configuration
-LDAP_TLS: "true"                    # Enables TLS capabilities (both LDAPS (implicit TLS) and LDAP with STARTTLS)
-LDAP_TLS_VERIFY_CLIENT: "never"     # Allows unverified client certificates
-
-# Readonly User (for Passbolt directory sync)
-LDAP_READONLY_USER: "true"
-LDAP_READONLY_USER_USERNAME: "readonly"
-LDAP_READONLY_USER_PASSWORD: "readonly"
-
-# User and Group Structure
-LDAP_USERS_DN: "ou=users,dc=passbolt,dc=local"
-LDAP_GROUPS_DN: "ou=groups,dc=passbolt,dc=local"
-```
-
-### LDAP Connection Options
-
-The setup supports two LDAP connection methods:
-
-- **LDAPS (implicit TLS)**: Port 636 (typically) - Currently used by Passbolt
-- **LDAP with STARTTLS**: Port 389 (typically) - Another option for Passbolt
-
-Both methods use the same certificate configuration and are automatically enabled via `LDAP_TLS=true`.
-
-### osixia/openldap Features
-
-The osixia/openldap image provides several key features:
-
-#### Automatic Certificate Generation
-- Self-signed certificates: Generated automatically using the container hostname
-- Certificate location: `/container/service/slapd/assets/certs/`
-- Files created:
-  - `ldap.crt` - Server certificate
-  - `ldap.key` - Private key
-  - `ca.crt` - CA certificate (docker-light-baseimage)
-  - `dhparam.pem` - DH parameters
-- Certificate extraction: The `fix-ldaps-certificates.sh` script automatically extracts these certificates from the running container to create the certificate bundle used by Passbolt
-
-#### TLS Configuration
-- LDAP_TLS=true: Enables both LDAPS (implicit TLS) (port 636 typically) and LDAP with STARTTLS (port 389 typically)
-- LDAP_TLS_VERIFY_CLIENT=never: Allows unverified client certificates
-- Automatic TLS setup: No manual certificate configuration required
-
-#### User Management
-- Admin user: `cn=admin,dc=passbolt,dc=local` with password `P4ssb0lt`
-- Readonly user: `cn=readonly,dc=passbolt,dc=local` with password `readonly`
-- Automatic user creation: Users and groups created via bootstrap LDIF files
-
-### Certificate Management
-
-The setup uses a streamlined certificate process that extracts certificates directly from the LDAP container:
-
-1. `./scripts/generate-certificates.sh` - Creates SMTP certificates only
-2. `./scripts/fix-ldaps-certificates.sh` - Extracts LDAP certificates from container:
-   - Extracts server certificate from `/container/service/slapd/assets/certs/ldap.crt`
-   - Extracts CA certificate from `/container/service/slapd/assets/certs/ca.crt`
-   - Creates `certs/ldaps_bundle.crt` with both server and CA certificates
-   - Creates `certs/ldap-local.crt` with server certificate only (backward compatibility)
-   - Built into Passbolt container during build process
-   - Called automatically by `setup.sh`
-
-### Passbolt Configuration
-
-The setup is configured with basic Directory Sync settings via environment variables. Detailed LDAP connection settings (host, port, credentials, etc.) are configured through the Passbolt Web UI.
-
-**Environment Variables (docker-compose.yaml):**
-```yaml
-# Directory Sync Plugin (basic settings only - Note: Currently not working, see task PB-45139 for fix)
-PASSBOLT_PLUGINS_DIRECTORY_SYNC_ENABLED: "true"
-```
-
-**Web UI Configuration:**
-- Access Passbolt as administrator
-- Go to Organization Settings > Users Directory
-- Configure LDAP connection details (host, port, credentials, filters, etc.)
-- The setup supports both LDAPS (port 636) and LDAP with STARTTLS (port 389)
-
-### Certificate System Overview
-
-- Root CA: Self-signed Certificate Authority (`keys/rootCA.crt`)
-- LDAP Certificate: The LDAP server uses its own self-signed certificate (issued by `docker-light-baseimage`)
-- LDAPS Bundle: Contains the CA certificate from the LDAP server for Passbolt verification
-- SMTP Certificate: For secure email communication
-- Keycloak Certificate: For SSO integration
-
-### LDAP Directory Structure
-
-```
-dc=passbolt,dc=local
-├── ou=users
-│   ├── cn=ada (Ada Lovelace - ada@passbolt.com)
-│   ├── cn=betty (Betty Holberton - betty@passbolt.com)
-│   ├── cn=carol (Carol Shaw - carol@passbolt.com)
-│   ├── cn=dame (Dame Stephanie Shirley - dame@passbolt.com)
-│   └── cn=edith (Edith Clarke - edith@passbolt.com)
-└── ou=groups
-    ├── cn=passbolt (Main user group)
-    ├── cn=developers (Development team)
-    ├── cn=demoteam (Demo team)
-    └── cn=admins (Administrators)
-```
-
-### Passbolt LDAP Settings
-
-Configure in Passbolt web interface under Organization Settings > Directory:
-- Host: `ldap.local`
-- Port: `636` (LDAPS - implicit TLS) or `389` (LDAP with STARTTLS)
-- Username: `cn=readonly,dc=passbolt,dc=local`
-- Password: `readonly`
-- Base DN: `dc=passbolt,dc=local`
-- Verify TLS certificate: Checked (certificate bundle is trusted)
-
-> Note: The readonly user is automatically created by the LDAP container and has read-only access to the directory, which is the recommended approach for Passbolt directory synchronization. Passbolt directory sync is one-way read-only - it reads user and group data from LDAP but does not write back to LDAP.
-
-#### Directory Settings
-- Users Path: `ou=users`
-- Group Path: `ou=groups`
-- User Filter: `(objectClass=inetOrgPerson)`
-- Group Filter: `(objectClass=groupOfUniqueNames)`
-
-#### Attributes
-- Username: `mail`
-- Group: `cn`
-- First Name: `givenName`
-- Last Name: `sn`
-- Email: `mail`
-
-#### TLS Configuration
-- TLS Verification: Enabled
-- CA Certificate: Built into container (automatically configured)
-- Allow Self-Signed: Enabled
-
-> Note: The LDAP server's certificate is automatically downloaded and built into the Passbolt container during setup, allowing Passbolt to verify the LDAP connection securely.
-
-> Important: The LDAP admin user `cn=admin,dc=passbolt,dc=local` is automatically created during the setup process for administrative operations. For Passbolt directory synchronization, use the readonly user `cn=readonly,dc=passbolt,dc=local` which is also automatically created by the LDAP container.
-
-### Directory Synchronization
-One-way read-only from LDAP to Passbolt. LDAP serves as the source of truth for user identity and group membership. Passbolt reads user/group data during sync but never writes back to LDAP.
+- Directory Sync details (host, port, credentials, filters) configured via Passbolt Web UI
+- PHP TLS configuration in `config/php/ssl.ini`
 
 ## Keycloak SSO Configuration
 
 ### Environment Setup
 
-The setup uses:
+Stack components:
 - Passbolt Pro with OIDC plugin
-- Keycloak 26.3.0
-- MariaDB for both Passbolt and Keycloak databases
+- Keycloak 26.4
+- Shared MariaDB (`passbolt` and `keycloak` databases)
 - Shared certificate system
-
-### Database Configuration
-
-Shared MariaDB instance with separate databases:
-- `passbolt` database for Passbolt
-- `keycloak` database for Keycloak
-
-The `init-keycloak-db.sql` script creates the Keycloak database and grants permissions.
-
-### Certificate Trust Flow
-
-```
-Browser/Client → keycloak.crt → rootCA.crt → Trusted Root Store
-```
 
 ### PHP SSL Configuration
 
@@ -717,8 +368,7 @@ php_admin_value[curl.cainfo] = "/etc/ssl/certs/ca-certificates.crt"
      - Web origins: https://passbolt.local
      - Click "Save"
    - **Credentials tab**:
-     - Copy the "Client secret" value
-     - Default value: "9cBUxO4c68E7SYJJJPJ8FjtIDLgMdHqi"
+     - Copy the generated "Client secret" value
 
 5. **Create User:**
    - Go to "Users" > "Add user"
@@ -737,10 +387,32 @@ php_admin_value[curl.cainfo] = "/etc/ssl/certs/ca-certificates.crt"
 Configure in Passbolt web interface under Administration → Authentication → SSO:
 
 - **Issuer URL**: `https://keycloak.local:8443/realms/passbolt`
+- **OpenID Configuration Path**: `/.well-known/openid-configuration`
 - **Client ID**: `passbolt-client`
-- **Client Secret**: `9cBUxO4c68E7SYJJJPJ8FjtIDLgMdHqi`
+- **Client Secret**: Use value from Keycloak Credentials tab
 - **Scopes**: `openid profile email`
 - **SSL Verification**: Enabled
+
+**Full OpenID Configuration URL**: `https://keycloak.local:8443/realms/passbolt/.well-known/openid-configuration`
+
+This endpoint provides the complete OAuth2/OIDC discovery document, including authorization, token, and userinfo endpoints.
+
+**Verify Configuration:**
+```bash
+curl -k https://keycloak.local:8443/realms/passbolt/.well-known/openid-configuration | jq
+```
+*Note: `-k` flag skips certificate verification for self-signed certificates in development.*
+
+**Expected Output (excerpt):**
+```json
+{
+  "issuer": "https://keycloak.local:8443/realms/passbolt",
+  "authorization_endpoint": "https://keycloak.local:8443/realms/passbolt/protocol/openid-connect/auth",
+  "token_endpoint": "https://keycloak.local:8443/realms/passbolt/protocol/openid-connect/token",
+  "userinfo_endpoint": "https://keycloak.local:8443/realms/passbolt/protocol/openid-connect/userinfo",
+  ...
+}
+```
 
 ### Testing SSO Integration
 
@@ -750,21 +422,13 @@ Configure in Passbolt web interface under Administration → Authentication → 
 4. Log in with ada@passbolt.com / passbolt
 5. Redirected back to Passbolt and logged in
 
-### Screenshots
-
-See `assets/` directory for configuration screenshots:
-- Keycloak client configuration
-- Keycloak user setup  
-- Passbolt SSO configuration
-- Passbolt OIDC login
+**Note:** Configuration examples in `assets/` directory.
 
 ## SMTP Configuration
 
-### Services Overview
+SMTP4Dev: http://smtp.local:5050 (SMTPS port 465)
 
-- SMTP4Dev: http://smtp.local:5050 (port 465 typically, SMTPS (implicit TLS))
-
-### Current Configuration
+### Configuration
 
 Passbolt configured to use SMTP4Dev with SMTPS (implicit TLS):
 
@@ -942,6 +606,54 @@ docker compose exec valkey valkey-cli keys "*session*"
 ```bash
 ./scripts/tests/scripts/test-scripts.sh
 ```
+
+### SCIM API Testing with Bruno
+
+Test Passbolt's SCIM (System for Cross-domain Identity Management) endpoints using Bruno API client.
+
+#### Setup Bruno
+
+1. **Install Bruno**: Download from [usebruno.com](https://www.usebruno.com/)
+2. **Open Collection**: Open the `bruno/passbolt-scim-testing` folder in Bruno
+3. **Configure Environment**: The `local` environment is pre-configured with:
+   - Base URL: `https://passbolt.local`
+   - SCIM Base URL: `https://passbolt.local/scim/v2/935452c2-7a21-4413-8457-8085b50376d3`
+   - Bearer Token: `pb_wwpDka8H0AORBBVGcL8tU8xtJTJJI0etBO7F0QeshLj`
+   - Content-Type: `application/scim+json`
+
+#### SCIM Test Workflow
+
+1. **Get Service Provider Config** - Verify SCIM is enabled
+2. **List Users** - See existing users
+3. **Create User** - Add a test user
+4. **Get User by ID** - Verify user creation
+5. **Update User** - Modify user attributes
+6. **Patch User** - Partial update (e.g., deactivate)
+7. **Search Users** - Find users with filters
+8. **Delete User** - Remove test user
+
+#### Passbolt SCIM Requirements
+
+- **Email Type**: Passbolt requires `"type": "work"` in email objects
+- **Authentication**: Uses Bearer token authentication
+- **Content-Type**: Must be `application/scim+json`
+- **User Schema**: Requires `userName`, `name`, and `emails` with work type
+
+#### cURL Example
+
+```bash
+curl -k --request GET \
+  --url 'https://passbolt.local/scim/v2/935452c2-7a21-4413-8457-8085b50376d3/Users?startIndex=1&count=100' \
+  --header 'authorization: Bearer pb_wwpDka8H0AORBBVGcL8tU8xtJTJJI0etBO7F0QeshLj' \
+  --header 'content-type: application/scim+json'
+```
+*Note: `-k` flag skips certificate verification for self-signed certificates in development.*
+
+#### Common Issues
+
+- **"Email not found" error**: Ensure email has `"type": "work"`
+- **Authentication errors**: Verify bearer token is correct in environment
+- **User not found**: Check if user exists in Passbolt first
 
 ### Manual Verification
 ```bash
@@ -1310,15 +1022,6 @@ Key directories:
 - `config/` - Configuration files (PHP, SSL, database)
 - `assets/` - Documentation screenshots
 - `docker-compose.yaml` - Main configuration
-
-## Use Cases
-
-This example repository is useful for:
-
-- Learning: Understanding Passbolt Pro SSO and LDAPS integration
-- Testing: Validating configurations before production deployment
-- Development: Local development environment for Passbolt integrations
-- Demonstration: Showing integration capabilities
 
 ## Contributing
 

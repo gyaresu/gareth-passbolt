@@ -1,0 +1,39 @@
+meta {
+  name: Update User
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{scimBaseUrl}}/Users/{{userId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "schemas": [
+      "urn:ietf:params:scim:schemas:core:2.0:User"
+    ],
+    "id": "{{userId}}",
+    "userName": "brunouser",
+    "name": {
+      "givenName": "Bruno",
+      "familyName": "User Updated"
+    },
+    "emails": [
+      {
+        "value": "brunouser@example.com",
+        "type": "work",
+        "primary": true
+      }
+    ],
+    "active": true,
+    "displayName": "Bruno User Updated"
+  }
+}
+
+vars:pre-request {
+  userId: 1
+}
+

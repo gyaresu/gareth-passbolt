@@ -1,0 +1,20 @@
+meta {
+  name: List Users
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{scimBaseUrl}}/Users
+  body: none
+  auth: inherit
+}
+
+params:query {
+  startIndex: 1
+  count: 100
+  filter: 
+  sortBy: 
+  sortOrder: ascending
+}
+

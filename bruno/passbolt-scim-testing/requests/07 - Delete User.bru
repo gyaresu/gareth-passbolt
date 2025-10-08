@@ -1,0 +1,16 @@
+meta {
+  name: Delete User
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{scimBaseUrl}}/Users/{{userId}}
+  body: none
+  auth: inherit
+}
+
+vars:pre-request {
+  userId: 1
+}
+

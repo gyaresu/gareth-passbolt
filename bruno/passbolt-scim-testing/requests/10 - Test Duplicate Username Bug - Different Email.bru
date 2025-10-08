@@ -1,0 +1,33 @@
+meta {
+  name: Test Duplicate Username Bug - Different Email
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{scimBaseUrl}}/Users
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "schemas": [
+      "urn:ietf:params:scim:schemas:core:2.0:User"
+    ],
+    "userName": "duplicate_test",
+    "name": {
+      "givenName": "Duplicate",
+      "familyName": "Test"
+    },
+    "emails": [
+      {
+        "value": "duplicate_test_different@example.com",
+        "type": "work",
+        "primary": true
+      }
+    ],
+    "active": true,
+    "displayName": "Duplicate Test User - Different Email"
+  }
+}

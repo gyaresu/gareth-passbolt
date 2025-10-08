@@ -1,0 +1,16 @@
+meta {
+  name: Get User by ID
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{scimBaseUrl}}/Users/{{userId}}
+  body: none
+  auth: inherit
+}
+
+vars:pre-request {
+  userId: 1
+}
+
