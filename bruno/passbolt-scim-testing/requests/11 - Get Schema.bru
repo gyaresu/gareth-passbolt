@@ -1,0 +1,11 @@
+meta {
+  name: Get Schema
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{scimBaseUrl}}/Schemas
+  body: none
+  auth: inherit
+}

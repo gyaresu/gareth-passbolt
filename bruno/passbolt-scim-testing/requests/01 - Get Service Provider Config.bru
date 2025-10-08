@@ -1,0 +1,12 @@
+meta {
+  name: Get Service Provider Config
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{scimBaseUrl}}/ServiceProviderConfig
+  body: none
+  auth: inherit
+}
+

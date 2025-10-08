@@ -1,0 +1,36 @@
+meta {
+  name: Patch User (Partial Update)
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{scimBaseUrl}}/Users/{{userId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{bearerToken}}
+  Content-Type: {{contentType}}
+  User-Agent: {{userAgent}}
+}
+
+body:json {
+  {
+    "schemas": [
+      "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+    ],
+    "Operations": [
+      {
+        "op": "replace",
+        "path": "active",
+        "value": false
+      }
+    ]
+  }
+}
+
+vars:pre-request {
+  userId: 3f59c908-c4f6-4ee8-8738-e4d291d20c32
+}

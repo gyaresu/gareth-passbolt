@@ -1,0 +1,10 @@
+{
+  "version": "1",
+  "name": "Passbolt SCIM Testing",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
+
