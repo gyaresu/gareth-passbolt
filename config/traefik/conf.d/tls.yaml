@@ -19,4 +19,8 @@ tls:
       keyFile: /certs/passbolt.key
     - certFile: /certs/keycloak.crt
       keyFile: /certs/keycloak.key
+    - certFile: /certs/smtp.crt
+      keyFile: /certs/smtp.key
+    - certFile: /certs/traefik.crt
+      keyFile: /certs/traefik.key
 

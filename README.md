@@ -67,7 +67,7 @@ All scripts set up LDAP directories, generate GPG keys, and create Passbolt admi
 
 1. Add host entries:
    ```bash
-   echo "127.0.0.1 passbolt.local keycloak.local ldap.local smtp.local" | sudo tee -a /etc/hosts
+   echo "127.0.0.1 passbolt.local keycloak.local smtp.local traefik.local ldap1.local ldap2.local ldap-meta.local" | sudo tee -a /etc/hosts
    ```
 
 2. Add Passbolt Pro subscription key:
@@ -271,7 +271,8 @@ YAML files (fixes indentation issues in Passbolt docs):
 
 - Passbolt: https://passbolt.local
 - Keycloak: https://keycloak.local
-- Traefik Dashboard: http://localhost:8080
+- SMTP4Dev: https://smtp.local
+- Traefik Dashboard: https://traefik.local
 
 ### Validate Config
 
@@ -291,13 +292,13 @@ docker compose -f docker-compose.nginx.yaml up -d
 | Service   | URL                       | Credentials        | Purpose |
 |-----------|---------------------------|-------------------|---------|
 | Passbolt  | https://passbolt.local    | Created during setup | Main application |
-| Keycloak  | https://keycloak.local:8443 | admin / admin    | SSO provider |
-| SMTP4Dev  | http://smtp.local:5050    | N/A               | Email testing |
+| Keycloak  | https://keycloak.local | admin / admin    | SSO provider |
+| SMTP4Dev  | https://smtp.local    | N/A               | Email testing |
+| Traefik   | https://traefik.local | N/A | Reverse proxy dashboard |
 | LDAP1     | ldap1.local:636 (LDAPS) | cn=readonly,dc=passbolt,dc=local / readonly | Passbolt Inc. directory |
 | LDAP2     | ldap2.local:636 (LDAPS) | cn=reader,dc=example,dc=com / reader123 | Example Corp directory |
-| LDAP Meta | ldap-meta.local:636 (LDAPS) | cn=admin,dc=unified,dc=local / secret | Aggregation proxy (aggregation approach) |
-| Valkey    | valkey:6379 (internal)    | N/A               | Session storage and caching |
-| Traefik   | http://localhost:8080 (optional) | N/A | Reverse proxy dashboard |
+| LDAP Meta | ldap-meta.local:636 (LDAPS) | cn=admin,dc=unified,dc=local / secret | Aggregation proxy |
+| Valkey    | valkey:6379 (internal)    | N/A               | Session storage |
 
 ## Valkey Session Handling
 
@@ -471,7 +472,7 @@ curl -k https://keycloak.local:8443/realms/passbolt/.well-known/openid-configura
 
 ## SMTP Configuration
 
-SMTP4Dev: http://smtp.local:5050 (SMTPS port 465)
+SMTP4Dev: https://smtp.local (SMTPS port 465)
 
 ### Configuration
 
@@ -959,7 +960,7 @@ api:
 #### Manual Email Test
 Send a test email using SMTP4Dev API:
 ```bash
-curl -X POST http://smtp.local:5050/api/v2/messages \
+curl -k -X POST https://smtp.local/api/v2/messages \
   -H "Content-Type: application/json" \
   -d '{
     "to": "test@example.com",

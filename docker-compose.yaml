@@ -19,7 +19,6 @@ services:
     container_name: smtp4dev
     restart: unless-stopped
     ports:
-      - '5050:80'    # Web interface
       - '465:25'     # Implicit TLS SMTP
     volumes:
       - ./smtp4dev/certs:/certs:ro
@@ -30,6 +29,13 @@ services:
       - ServerOptions__TlsMode=ImplicitTls
       - ServerOptions__TlsCertificate=/certs/tls.pfx
       - ServerOptions__TlsCertificatePassword=changeme
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.smtp.rule=Host(`smtp.local`)"
+      - "traefik.http.routers.smtp.ruleSyntax=v3"
+      - "traefik.http.routers.smtp.entrypoints=websecure"
+      - "traefik.http.routers.smtp.tls=true"
+      - "traefik.http.services.smtp.loadbalancer.server.port=80"
     networks:
       default:
         aliases:
@@ -276,7 +282,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"  # Traefik dashboard
+      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./config/traefik/traefik.yaml:/traefik.yaml:ro
