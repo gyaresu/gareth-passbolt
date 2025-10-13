@@ -37,11 +37,17 @@
 
 Choose your LDAP integration approach:
 
-**LDAP Aggregation (Default):**
+**Default (Traefik + LDAP Aggregation):**
+```bash
+./scripts/setup.sh
+```
+Full stack with Traefik reverse proxy, LDAP aggregation via OpenLDAP meta backend.
+
+**LDAP Aggregation with Nginx:**
 ```bash
 ./scripts/setup-aggregation-demo.sh
 ```
-OpenLDAP meta backend creates unified namespace. Configure via Passbolt Web UI.
+OpenLDAP meta backend with Nginx instead of Traefik. Uses direct port access.
 
 **Direct Multi-Domain:**
 ```bash
@@ -49,17 +55,11 @@ OpenLDAP meta backend creates unified namespace. Configure via Passbolt Web UI.
 ```
 Passbolt connects directly to multiple LDAP servers via PHP configuration.
 
-**Single LDAP:**
+**Single LDAP with Nginx:**
 ```bash
-./scripts/setup.sh
+./scripts/setup-nginx-single.sh
 ```
-Basic single directory setup.
-
-**Traefik (Aggregation with Traefik Reverse Proxy):**
-```bash
-./scripts/setup-traefik.sh
-```
-LDAP aggregation with Traefik reverse proxy for production-like HTTPS routing. Uses properly formatted Traefik configuration files.
+Basic single directory setup with Nginx.
 
 All scripts set up LDAP directories, generate GPG keys, and create Passbolt admin user 'ada'. See [LDAP Integration](#ldap-integration) for detailed comparison.
 
@@ -248,17 +248,17 @@ One-way read-only from LDAP to Passbolt. LDAP is the source of truth.
 - LdapRecord Multi-Domain: https://ldaprecord.com/docs/laravel/v2/configuration
 - OpenLDAP Admin: https://www.openldap.org/doc/admin24/
 
-## Traefik Reverse Proxy (Optional)
+## Traefik Reverse Proxy (Default)
 
-Alternative to Nginx with automatic HTTPS routing and service discovery.
+Traefik provides automatic HTTPS routing and service discovery.
 
 ### Setup
 
 ```bash
-./scripts/setup-traefik.sh
+./scripts/setup.sh
 ```
 
-Uses `docker-compose.traefik.yaml` instead of default compose file.
+Uses the default `docker-compose.yaml` file.
 
 ### Configuration
 
@@ -279,11 +279,11 @@ YAML files (fixes indentation issues in Passbolt docs):
 ./scripts/validate-traefik-config.sh  # Checks YAML syntax, tabs, indentation
 ```
 
-### Switch from Nginx
+### Use Nginx Instead
 
 ```bash
 docker compose down
-docker compose -f docker-compose.traefik.yaml up -d
+docker compose -f docker-compose.nginx.yaml up -d
 ```
 
 ## Services Overview
@@ -930,7 +930,7 @@ rm fix_group_memberships.ldif
 ./scripts/validate-traefik-config.sh
 
 # Check logs
-docker compose -f docker-compose.traefik.yaml logs traefik
+docker compose logs traefik
 
 # Verify indentation (use 2 spaces, no tabs)
 grep -P '\t' config/traefik/*.yaml  # Should return nothing
