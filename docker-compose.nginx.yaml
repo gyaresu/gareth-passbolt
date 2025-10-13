@@ -1,5 +1,5 @@
-# Passbolt with Traefik
-# Use: docker compose -f docker-compose.traefik.yaml up -d
+# Passbolt Pro with Nginx (alternative to Traefik)
+# Use: docker compose -f docker-compose.nginx.yaml up -d
 
 services:
   db:
@@ -54,19 +54,14 @@ services:
       KC_DB_URL: jdbc:mariadb://db:3306/keycloak
       KC_DB_USERNAME: root
       KC_DB_PASSWORD: rootpassword
+    ports:
+      - '8081:8080'
+      - '8443:8443'
+      - '8787:8787'
     volumes:
       - ./keys/keycloak.crt:/opt/keycloak/conf/server.crt.pem:ro
       - ./keys/keycloak.key:/opt/keycloak/conf/server.key.pem:ro
     command: ["start-dev"]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.keycloak.rule=Host(`keycloak.local`)"
-      - "traefik.http.routers.keycloak.entrypoints=websecure"
-      - "traefik.http.routers.keycloak.tls=true"
-      - "traefik.http.services.keycloak.loadbalancer.server.port=8443"
-      - "traefik.http.services.keycloak.loadbalancer.server.scheme=https"
-      - "traefik.http.services.keycloak.loadbalancer.serversTransport=passbolt-transport@file"
-      - "traefik.http.routers.keycloak.middlewares=security-headers@file"
     networks:
       default:
         aliases:
@@ -91,8 +86,6 @@ services:
       - valkey
       - ldap1
       - ldap2
-    extra_hosts:
-      - "keycloak.local:172.19.0.1"
     environment:
       APP_FULL_BASE_URL: https://passbolt.local
       DATASOURCES_DEFAULT_HOST: "db"
@@ -168,15 +161,10 @@ services:
 
         /usr/bin/wait-for.sh -t 0 db:3306 -- /docker-entrypoint.sh
 
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.passbolt.rule=Host(`passbolt.local`)"
-      - "traefik.http.routers.passbolt.entrypoints=websecure"
-      - "traefik.http.routers.passbolt.tls=true"
-      - "traefik.http.services.passbolt.loadbalancer.server.port=443"
-      - "traefik.http.services.passbolt.loadbalancer.server.scheme=https"
-      - "traefik.http.services.passbolt.loadbalancer.serversTransport=passbolt-transport@file"
-      - "traefik.http.routers.passbolt.middlewares=security-headers@file"
+    ports:
+      - 80:80
+      - 443:443
+      - 9000:9000
     networks:
       default:
         aliases:
@@ -264,22 +252,6 @@ services:
         aliases:
           - ldap-meta.local
 
-  traefik:
-    image: traefik:v2.11
-    container_name: traefik
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"  # Traefik dashboard
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./config/traefik/traefik.yaml:/traefik.yaml:ro
-      - ./config/traefik/conf.d:/etc/traefik/conf.d:ro
-      - ./keys:/certs:ro
-    networks:
-      default:
-
 volumes:
   database_volume:
     name: ${COMPOSE_PROJECT_NAME}_database_volume
@@ -309,4 +281,3 @@ volumes:
     name: ${COMPOSE_PROJECT_NAME}_ldap_meta_config
   ldap_meta_certs:
     name: ${COMPOSE_PROJECT_NAME}_ldap_meta_certs
-

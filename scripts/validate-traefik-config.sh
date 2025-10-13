@@ -163,8 +163,8 @@ echo ""
 
 echo "Step 4: Checking docker-compose configuration..."
 echo "-------------------------------------------------"
-check_file_exists "docker-compose.traefik.yaml"
-check_for_tabs "docker-compose.traefik.yaml"
+check_file_exists "docker-compose.yaml"
+check_for_tabs "docker-compose.yaml"
 echo ""
 
 echo "Step 5: Checking Traefik configuration structure..."
@@ -224,10 +224,10 @@ if [ $VALIDATION_FAILED -eq 0 ]; then
     echo ""
     echo "Your Traefik configuration appears to be valid."
     echo "You can start the stack with:"
-    echo "  docker compose -f docker-compose.traefik.yaml up -d"
+    echo "  docker compose up -d"
     echo ""
-    echo "Or use the setup script:"
-    echo "  ./scripts/setup-traefik.sh"
+echo "Or use the setup script:"
+echo "  ./scripts/setup.sh"
     exit 0
 else
     echo "❌ Validation failed!"
