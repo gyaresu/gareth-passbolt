@@ -270,6 +270,9 @@ services:
     image: traefik:v3.2
     container_name: traefik
     restart: unless-stopped
+    depends_on:
+      - passbolt
+      - keycloak
     ports:
       - "80:80"
       - "443:443"

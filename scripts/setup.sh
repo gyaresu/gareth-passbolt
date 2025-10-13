@@ -155,29 +155,19 @@ echo "✓ LDAP aggregation proxy ready"
 echo "   📊 Unified namespace: dc=unified,dc=local"
 echo "   🔗 Endpoint: ldap-meta.local:3389"
 
-# Step 7: Start Traefik
+# Step 7: Start Keycloak, Passbolt, and Traefik
 echo ""
-echo "Step 7: Starting Traefik reverse proxy..."
-echo "   Starting Traefik with automatic HTTPS routing..."
-docker compose up -d traefik
-wait_for_service "Traefik" 443 60
-wait_for_service "Traefik Dashboard" 8080 30
-echo "✓ Traefik ready"
-echo "   📊 Dashboard: http://localhost:8080"
-
-# Step 8: Start Keycloak and Passbolt
-echo ""
-echo "Step 8: Starting Keycloak and Passbolt..."
-echo "   Starting SSO and password manager services..."
-docker compose up -d keycloak passbolt
-sleep 10  # Give services time to register with Traefik
+echo "Step 7: Starting Keycloak, Passbolt, and Traefik..."
+echo "   Starting SSO, password manager, and reverse proxy..."
+docker compose up -d keycloak passbolt traefik
 wait_for_service "Keycloak" 443 60
 wait_for_service "Passbolt" 443 60
-echo "✓ Keycloak and Passbolt ready"
+wait_for_service "Traefik Dashboard" 8080 30
+echo "✓ Keycloak, Passbolt, and Traefik ready"
 
-# Step 9: Setup LDAP certificates for Passbolt
+# Step 8: Setup LDAP certificates for Passbolt
 echo ""
-echo "Step 9: Setting up LDAP certificates..."
+echo "Step 8: Setting up LDAP certificates..."
 echo "   Extracting LDAP certificates from containers..."
 ./scripts/fix-ldaps-certificates-aggregation.sh
 echo "   Rebuilding Passbolt with certificate bundle..."
@@ -186,9 +176,9 @@ docker compose up -d passbolt
 sleep 10
 echo "✓ LDAP certificates and aggregation configuration ready"
 
-# Step 10: Generate GPG keys for demo users
+# Step 9: Generate GPG keys for demo users
 echo ""
-echo "Step 10: Generating GPG keys for demo users..."
+echo "Step 9: Generating GPG keys for demo users..."
 echo "   Creating GPG keys with email=passphrase for convenience..."
 if command -v gpg &> /dev/null; then
     ./scripts/gpg/generate-demo-keys.sh
@@ -198,9 +188,9 @@ else
     echo "   Users will need to generate their own keys for Passbolt login"
 fi
 
-# Step 11: Create Passbolt admin user (ada@passbolt.com now exists in LDAP)
+# Step 10: Create Passbolt admin user (ada@passbolt.com now exists in LDAP)
 echo ""
-echo "Step 11: Creating Passbolt admin user..."
+echo "Step 10: Creating Passbolt admin user..."
 echo "   Creating admin user 'ada@passbolt.com'..."
 echo "   (This user now exists in LDAP1, so sync will work properly)"
 
@@ -215,9 +205,9 @@ else
     fi
 fi
 
-# Step 12: LDAP synchronization setup
+# Step 11: LDAP synchronization setup
 echo ""
-echo "Step 12: LDAP synchronization setup..."
+echo "Step 11: LDAP synchronization setup..."
 echo "   Note: LDAP directory sync must be configured through Passbolt web UI first"
 echo "   The CakePHP command will be available after web UI configuration"
 echo ""
