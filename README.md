@@ -55,6 +55,12 @@ Passbolt connects directly to multiple LDAP servers via PHP configuration.
 ```
 Basic single directory setup.
 
+**Traefik (Aggregation with Traefik Reverse Proxy):**
+```bash
+./scripts/setup-traefik.sh
+```
+LDAP aggregation with Traefik reverse proxy for production-like HTTPS routing. Uses properly formatted Traefik configuration files.
+
 All scripts set up LDAP directories, generate GPG keys, and create Passbolt admin user 'ada'. See [LDAP Integration](#ldap-integration) for detailed comparison.
 
 ### Manual Setup
@@ -242,6 +248,44 @@ One-way read-only from LDAP to Passbolt. LDAP is the source of truth.
 - LdapRecord Multi-Domain: https://ldaprecord.com/docs/laravel/v2/configuration
 - OpenLDAP Admin: https://www.openldap.org/doc/admin24/
 
+## Traefik Reverse Proxy (Optional)
+
+Alternative to Nginx with automatic HTTPS routing and service discovery.
+
+### Setup
+
+```bash
+./scripts/setup-traefik.sh
+```
+
+Uses `docker-compose.traefik.yaml` instead of default compose file.
+
+### Configuration
+
+YAML files (fixes indentation issues in Passbolt docs):
+- `config/traefik/traefik.yaml` - Main config with HTTP to HTTPS redirect
+- `config/traefik/conf.d/tls.yaml` - TLS 1.2+ settings
+- `config/traefik/conf.d/headers.yaml` - Security headers
+
+### Access
+
+- Passbolt: https://passbolt.local
+- Keycloak: https://keycloak.local
+- Traefik Dashboard: http://localhost:8080
+
+### Validate Config
+
+```bash
+./scripts/validate-traefik-config.sh  # Checks YAML syntax, tabs, indentation
+```
+
+### Switch from Nginx
+
+```bash
+docker compose down
+docker compose -f docker-compose.traefik.yaml up -d
+```
+
 ## Services Overview
 
 | Service   | URL                       | Credentials        | Purpose |
@@ -253,6 +297,7 @@ One-way read-only from LDAP to Passbolt. LDAP is the source of truth.
 | LDAP2     | ldap2.local:636 (LDAPS) | cn=reader,dc=example,dc=com / reader123 | Example Corp directory |
 | LDAP Meta | ldap-meta.local:636 (LDAPS) | cn=admin,dc=unified,dc=local / secret | Aggregation proxy (aggregation approach) |
 | Valkey    | valkey:6379 (internal)    | N/A               | Session storage and caching |
+| Traefik   | http://localhost:8080 (optional) | N/A | Reverse proxy dashboard |
 
 ## Valkey Session Handling
 
@@ -873,6 +918,43 @@ rm fix_group_memberships.ldif
 - Verify Valkey container is running: `docker compose ps valkey`
 - Check Valkey connectivity: `docker compose exec passbolt ping valkey`
 - Check Valkey logs: `docker compose logs valkey`
+
+### Traefik Configuration Issues
+**Symptoms**: "no valid configuration found in file: /traefik.yaml"
+
+**Cause**: Improperly indented YAML (usually from copying Passbolt docs).
+
+**Fix**:
+```bash
+# Validate config
+./scripts/validate-traefik-config.sh
+
+# Check logs
+docker compose -f docker-compose.traefik.yaml logs traefik
+
+# Verify indentation (use 2 spaces, no tabs)
+grep -P '\t' config/traefik/*.yaml  # Should return nothing
+```
+
+YAML must use consistent spacing:
+```yaml
+# Wrong
+api:
+	dashboard: true
+
+# Correct
+api:
+  dashboard: true
+```
+
+### Traefik Routing Issues
+**Symptoms**: 404 errors, services not accessible
+
+**Fix**:
+- Check dashboard: http://localhost:8080
+- Verify certificates exist in `keys/`
+- Confirm Docker socket mounted: `/var/run/docker.sock:/var/run/docker.sock:ro`
+- Check service has `traefik.enable=true` label
 
 #### Manual Email Test
 Send a test email using SMTP4Dev API:
