@@ -1,0 +1,16 @@
+http:
+  routers:
+    traefik-dashboard:
+      rule: Host(`traefik.local`)
+      service: dashboard@internal
+      entryPoints:
+        - websecure
+      tls: {}
+    traefik-api:
+      rule: Host(`traefik.local`) && PathPrefix(`/api`)
+      service: api@internal
+      entryPoints:
+        - websecure
+      tls: {}
+      priority: 100
+

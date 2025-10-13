@@ -162,7 +162,6 @@ echo "   Starting SSO, password manager, and reverse proxy..."
 docker compose up -d keycloak passbolt traefik
 wait_for_service "Keycloak" 443 60
 wait_for_service "Passbolt" 443 60
-wait_for_service "Traefik Dashboard" 8080 30
 echo "✓ Keycloak, Passbolt, and Traefik ready"
 
 # Step 8: Setup LDAP certificates for Passbolt
@@ -233,11 +232,11 @@ echo ""
 echo "✓ Traefik Setup Complete!"
 echo "========================="
 echo ""
-echo "Access URLs (via Traefik):"
+echo "Access URLs:"
 echo "   - Passbolt:          https://passbolt.local"
 echo "   - Keycloak:          https://keycloak.local"
-echo "   - Traefik Dashboard: http://localhost:8080"
-echo "   - SMTP4Dev:          http://smtp.local:5050"
+echo "   - SMTP4Dev:          https://smtp.local"
+echo "   - Traefik Dashboard: https://traefik.local"
 echo "   - LDAP Meta:         ldap-meta.local:3389 (LDAP), :3636 (LDAPS)"
 echo ""
 echo "Demo Users:"

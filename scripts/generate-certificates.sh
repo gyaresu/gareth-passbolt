@@ -76,6 +76,28 @@ cat "$KEYS_DIR/keycloak.crt" "$KEYS_DIR/rootCA.crt" > "$KEYS_DIR/keycloak-chain.
 # Create a proper chain certificate for Passbolt
 cat "$KEYS_DIR/passbolt.crt" "$KEYS_DIR/rootCA.crt" > "$KEYS_DIR/passbolt-chain.crt"
 
+# Generate SMTP Certificate
+echo "Generating SMTP certificate..."
+openssl req -newkey rsa:2048 \
+  -subj "/C=AU/ST=Tasmania/L=Hobart/O=Passbolt Asia Pacific/OU=SMTP/CN=smtp.local" \
+  -addext "subjectAltName = DNS:smtp.local" \
+  -nodes -keyout "$KEYS_DIR/smtp.key" -out "$KEYS_DIR/smtp.csr"
+
+openssl x509 -req -CA "$KEYS_DIR/rootCA.crt" -CAkey "$KEYS_DIR/rootCA.key" \
+  -in "$KEYS_DIR/smtp.csr" -out "$KEYS_DIR/smtp.crt" -days 365 \
+  -CAcreateserial -extfile <(printf "subjectAltName=DNS:smtp.local")
+
+# Generate Traefik Certificate
+echo "Generating Traefik certificate..."
+openssl req -newkey rsa:2048 \
+  -subj "/C=AU/ST=Tasmania/L=Hobart/O=Passbolt Asia Pacific/OU=Traefik/CN=traefik.local" \
+  -addext "subjectAltName = DNS:traefik.local" \
+  -nodes -keyout "$KEYS_DIR/traefik.key" -out "$KEYS_DIR/traefik.csr"
+
+openssl x509 -req -CA "$KEYS_DIR/rootCA.crt" -CAkey "$KEYS_DIR/rootCA.key" \
+  -in "$KEYS_DIR/traefik.csr" -out "$KEYS_DIR/traefik.crt" -days 365 \
+  -CAcreateserial -extfile <(printf "subjectAltName=DNS:traefik.local")
+
 # LDAP chain certificate creation removed - using LDAP server's own certificates
 
 # Copy the root CA to a location for Passbolt container
