@@ -42,7 +42,7 @@ services:
           - smtp.local
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.4
+    image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
     restart: unless-stopped
     depends_on:
