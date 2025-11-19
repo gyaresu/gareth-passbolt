@@ -166,12 +166,22 @@ services:
       - |
         update-ca-certificates
 
+        # Fix JWT directory permissions
         chown -Rf root:www-data /etc/passbolt/jwt/
         chmod 750 /etc/passbolt/jwt/
-
-        # Only chmod key files if present
+        if [ ! -f /etc/passbolt/jwt/jwt.key ] || [ ! -f /etc/passbolt/jwt/jwt.pem ]; then
+          chmod 770 /etc/passbolt/jwt/
+          su -s /bin/bash -c "/usr/share/php/passbolt/bin/cake passbolt create_jwt_keys" www-data
+          chmod 750 /etc/passbolt/jwt/
+        fi
         [ -f /etc/passbolt/jwt/jwt.key ] && chmod 640 /etc/passbolt/jwt/jwt.key || true
         [ -f /etc/passbolt/jwt/jwt.pem ] && chmod 640 /etc/passbolt/jwt/jwt.pem || true
+
+        # Import GPG server key if present (for restored instances)
+        if [ -f /etc/passbolt/gpg/serverkey_private.asc ]; then
+          echo "Importing GPG server key..."
+          su -s /bin/bash -c "gpg --home /var/lib/passbolt/.gnupg --batch --import /etc/passbolt/gpg/serverkey_private.asc" www-data 2>&1 || true
+        fi
 
         /usr/bin/wait-for.sh -t 0 db:3306 -- /docker-entrypoint.sh
 
