@@ -4,6 +4,7 @@ data
 gpg_volume
 jwt_volume
 error_logs
+logs/
 
 # Generated realm files
 *.realm.json

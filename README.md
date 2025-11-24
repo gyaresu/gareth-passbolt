@@ -22,8 +22,11 @@
 
 - [Quick Start](#quick-start)
 - [LDAP Integration](#ldap-integration)
+- [Traefik Reverse Proxy (Default)](#traefik-reverse-proxy-default)
 - [Services Overview](#services-overview)
 - [Valkey Session Handling](#valkey-session-handling)
+- [Environment Variables Configuration](#environment-variables-configuration)
+- [SIEM Audit Logging](#siem-audit-logging)
 - [Keycloak SSO Configuration](#keycloak-sso-configuration)
 - [SMTP Configuration](#smtp-configuration)
 - [User and Group Management](#user-and-group-management)
@@ -359,6 +362,115 @@ Environment variables documented in official Passbolt documentation:
 ### Important Notes
 - Directory Sync details (host, port, credentials, filters) configured via Passbolt Web UI
 - PHP TLS configuration in `config/php/ssl.ini`
+
+## SIEM Audit Logging
+
+Passbolt supports file-based and syslog-based audit logging. Both can run simultaneously.
+
+### Configuration
+
+**File Logging:**
+```yaml
+LOG_ACTION_LOGS_ON_FILE_ENABLED: "true"
+LOG_ACTION_LOGS_ON_FILE_PATH: "/var/log/passbolt/"  # trailing slash required on macOS
+LOG_ACTION_LOGS_ON_FILE_FILE: "action-logs.log"
+LOG_ACTION_LOGS_ON_FILE_STRATEGY: 'Passbolt\Log\Strategy\ActionLogsDefaultQueryStrategy'
+```
+
+**Syslog Logging:**
+```yaml
+LOG_ACTION_LOGS_ON_SYSLOG_ENABLED: "true"
+LOG_ACTION_LOGS_ON_SYSLOG_STRATEGY: 'Passbolt\Log\Strategy\ActionLogsUsernameQueryStrategy'
+LOG_ACTION_LOGS_ON_SYSLOG_PREFIX: 'passbolt-audit:'
+```
+
+### Logging Strategies
+
+Strategies are independent of output method (file or syslog). Any strategy can be used with either.
+
+**ActionLogsDefaultQueryStrategy:**
+- Emits every action log row (all actions, success and error)
+- Raw JSON with `user_id`, `action_id`, `details` (no resolved usernames)
+
+**ActionLogsErrorsOnlyQueryStrategy:**
+- Same format as default but only failed actions
+
+**ActionLogsUsernameQueryStrategy:**
+- JSON with resolved usernames and full names
+- Only logs specific actions: login, logout, password access/update/add/delete, share
+- Does not log user creation, ownership transfers, or other actions outside its allowlist
+
+### Log Locations
+
+**File Logs:**
+- Location: `./logs/passbolt/action-logs.log` (on host)
+- Format: Raw JSON, one entry per line
+- Example:
+```json
+{"id":"...","user_id":"...","action_id":"...","context":"PUT /resources/...","status":1,"created":"2025-11-24T23:11:33+00:00"}
+```
+
+**Syslog Logs:**
+- Location: `./logs/passbolt/syslog.log` (on host)
+- Format: Syslog format with JSON payload
+- Filter: Use `grep "passbolt-audit"` to see only Passbolt entries
+- Example:
+```
+2025-11-24T23:11:33.093198+00:00 1d3ec95b1d81 passbolt-audit:: 2025-11-24 23:11:33 info: {"timestamp":"2025-11-24 23:11:33","user":"ada@passbolt.com","action":"password_update","context":"Ada Lovelace (ada@passbolt.com) updated password","status":1,"resource_id":"f6c326ee-c967-437a-8f9e-e163eb73c929",...}
+```
+
+### Monitoring Logs
+
+**Watch file logs in real-time:**
+```bash
+tail -f logs/passbolt/action-logs.log
+```
+
+**Watch syslog (Passbolt entries only):**
+```bash
+tail -f logs/passbolt/syslog.log | grep --line-buffered 'passbolt-audit'
+```
+
+**View recent Passbolt audit entries:**
+```bash
+grep "passbolt-audit" logs/passbolt/syslog.log | tail -n 20
+```
+
+### Rsyslog Sidecar
+
+Rsyslog sidecar container:
+- Receives logs from Passbolt via shared Unix socket (`/dev/log`)
+- Writes to `./logs/passbolt/syslog.log`
+- Can forward to external syslog servers
+
+**Configuration:**
+- Rsyslog config: `config/rsyslog/rsyslog.conf`
+- Socket: Shared via Docker named volume `syslog_socket`
+- Documentation: https://github.com/rsyslog/rsyslog/tree/main/packaging/docker
+
+**Forward to remote syslog server:**
+Modify `config/rsyslog/rsyslog.conf`:
+```conf
+# Forward to remote syslog server
+*.* action(type="omfwd" target="siem.example.com" port="514" protocol="udp")
+```
+
+### Logged Actions (UsernameQueryStrategy)
+
+The username strategy logs these actions:
+- `user_login` - User authentication
+- `user_logout` - User logout
+- `password_access` - Resource viewed/accessed
+- `password_add` - Resource created
+- `password_update` - Resource updated
+- `password_delete` - Resource deleted
+- `share` - Resource shared with users/groups
+
+Actions not logged by username strategy (use default strategy to capture all):
+- User creation/invitation
+- Ownership transfers
+- Folder operations
+- Permission changes (outside of share action)
 
 ## Keycloak SSO Configuration
 

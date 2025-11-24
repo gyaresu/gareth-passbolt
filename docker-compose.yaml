@@ -98,6 +98,7 @@ services:
       - valkey
       - ldap1
       - ldap2
+      - rsyslog
     extra_hosts:
       - "keycloak.local:172.19.0.1"
     environment:
@@ -127,15 +128,18 @@ services:
       PASSBOLT_PLUGINS_SSO_PROVIDER_OAUTH2_ENABLED: "true"
       PASSBOLT_SECURITY_SSO_SSL_VERIFY: "false"
       
-      # SIEM logs
+      # Audit logging: file and syslog (both can use any strategy)
       LOG_ACTION_LOGS_ON_FILE_ENABLED: "true"
       LOG_ACTION_LOGS_ON_FILE_PATH: "/var/log/passbolt/"  # trailing slash required on macOS binds or CakePHP concatenates filename incorrectly
       LOG_ACTION_LOGS_ON_FILE_FILE: "action-logs.log"
-      # Strategies available for targeted SIEM tests, choose one:
-      #   ActionLogsDefaultQueryStrategy -> emits every action log row (raw user_id/action_id JSON)
-      #   ActionLogsErrorsOnlyQueryStrategy -> same as default but only failed actions
-      #   ActionLogsUsernameQueryStrategy -> login/logout/password access/update/add/delete/share only, includes usernames
-      LOG_ACTION_LOGS_ON_FILE_STRATEGY: 'Passbolt\Log\Strategy\ActionLogsUsernameQueryStrategy'
+      LOG_ACTION_LOGS_ON_FILE_STRATEGY: 'Passbolt\Log\Strategy\ActionLogsDefaultQueryStrategy'
+      
+      # Syslog audit logging (can run alongside file logging)
+      # Note: requires syslog daemon in container or sidecar - file logging works without it
+      LOG_ACTION_LOGS_ON_SYSLOG_ENABLED: "true"
+      LOG_ACTION_LOGS_ON_SYSLOG_STRATEGY: 'Passbolt\Log\Strategy\ActionLogsUsernameQueryStrategy'
+      LOG_ACTION_LOGS_ON_SYSLOG_PREFIX: 'passbolt-audit:'
+      # LOG_ACTION_LOGS_ON_SYSLOG_FACILITY: 1  # omit to use default LOG_USER (env vars are strings, would need casting)
 
       PASSBOLT_PLUGINS_JWT_AUTHENTICATION_ENABLED: "true"
         #      PASSBOLT_SECURITY_SMTP_SETTINGS_ENDPOINTS_DISABLED: "true"
@@ -169,8 +173,10 @@ services:
       - ./keys/ldap2-ca.crt:/etc/ssl/certs/ldap2-ca.crt:ro
       - ./keys/ldap2-ca.crt:/usr/local/share/ca-certificates/ldap2-ca.crt:ro
       - ./subscription_key.txt:/etc/passbolt/subscription_key.txt:ro
-      # persistent storaoge for SIEM logs
+      # persistent storage for SIEM logs
       - ./logs/passbolt:/var/log/passbolt
+      # Shared syslog socket directory with rsyslog sidecar
+      - syslog_socket:/var/run/syslog-socket
 
     command:
       - /bin/bash
@@ -198,6 +204,14 @@ services:
         # Uncomment the below two lines if you are using ldap sync. Change '* * * * *' to your preferred sync schedule. More info: https://en.wikipedia.org/wiki/Cron
         # touch /var/log/cron.log && chown www-data:www-data /var/log/cron.log
         # echo '* * * * * www-data exec /bin/bash -c "source /etc/environment && /usr/share/php/passbolt/bin/cake directory_sync all --persist" >> /var/log/cron.log 2>&1' >> /etc/cron.d/passbolt-pro-server
+
+        # Link /dev/log to shared rsyslog socket (wait for socket to exist)
+        for i in {1..30}; do
+          if [ -S /var/run/syslog-socket/syslog.sock ]; then
+            ln -sf /var/run/syslog-socket/syslog.sock /dev/log && break
+          fi
+          sleep 1
+        done
 
         /usr/bin/wait-for.sh -t 0 db:3306 -- /docker-entrypoint.sh
 
@@ -298,6 +312,21 @@ services:
         aliases:
           - ldap-meta.local
 
+  # Rsyslog sidecar for syslog audit logging
+  # Receives logs from Passbolt via /dev/log socket
+  # Documentation: https://github.com/rsyslog/rsyslog/tree/main/packaging/docker
+  rsyslog:
+    image: rsyslog/rsyslog:latest
+    container_name: rsyslog
+    restart: unless-stopped
+    volumes:
+      - ./config/rsyslog/rsyslog.conf:/etc/rsyslog.conf:ro
+      - ./logs/passbolt:/var/log/passbolt
+      - syslog_socket:/var/run/syslog-socket  # Socket directory shared with Passbolt
+    command: ["rsyslogd", "-n", "-f", "/etc/rsyslog.conf"]
+    networks:
+      default:
+
   traefik:
     image: traefik:v3.2
     container_name: traefik
@@ -328,6 +357,8 @@ volumes:
     name: ${COMPOSE_PROJECT_NAME}_smtp4dev_data
   valkey_data:
     name: ${COMPOSE_PROJECT_NAME}_valkey_data
+  syslog_socket:
+    name: ${COMPOSE_PROJECT_NAME}_syslog_socket
   ldap1_data:
     name: ${COMPOSE_PROJECT_NAME}_ldap1_data
   ldap1_config:
