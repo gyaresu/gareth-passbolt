@@ -127,6 +127,16 @@ services:
       PASSBOLT_PLUGINS_SSO_PROVIDER_OAUTH2_ENABLED: "true"
       PASSBOLT_SECURITY_SSO_SSL_VERIFY: "false"
       
+      # SIEM logs
+      LOG_ACTION_LOGS_ON_FILE_ENABLED: "true"
+      LOG_ACTION_LOGS_ON_FILE_PATH: "/var/log/passbolt/"  # trailing slash required on macOS binds or CakePHP concatenates filename incorrectly
+      LOG_ACTION_LOGS_ON_FILE_FILE: "action-logs.log"
+      # Strategies available for targeted SIEM tests, choose one:
+      #   ActionLogsDefaultQueryStrategy -> emits every action log row (raw user_id/action_id JSON)
+      #   ActionLogsErrorsOnlyQueryStrategy -> same as default but only failed actions
+      #   ActionLogsUsernameQueryStrategy -> login/logout/password access/update/add/delete/share only, includes usernames
+      LOG_ACTION_LOGS_ON_FILE_STRATEGY: 'Passbolt\Log\Strategy\ActionLogsUsernameQueryStrategy'
+
       PASSBOLT_PLUGINS_JWT_AUTHENTICATION_ENABLED: "true"
         #      PASSBOLT_SECURITY_SMTP_SETTINGS_ENDPOINTS_DISABLED: "true"
       PASSBOLT_SECURITY_DIRECTORY_SYNC_ENDPOINTS_DISABLED: "false"
@@ -159,6 +169,8 @@ services:
       - ./keys/ldap2-ca.crt:/etc/ssl/certs/ldap2-ca.crt:ro
       - ./keys/ldap2-ca.crt:/usr/local/share/ca-certificates/ldap2-ca.crt:ro
       - ./subscription_key.txt:/etc/passbolt/subscription_key.txt:ro
+      # persistent storaoge for SIEM logs
+      - ./logs/passbolt:/var/log/passbolt
 
     command:
       - /bin/bash
