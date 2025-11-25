@@ -1193,6 +1193,43 @@ ls -la subscription_key.txt
 # Should show: lrwxr-xr-x ... subscription_key.txt -> /path/to/actual/key
 ```
 
+### Database Growth Diagnostics
+
+If backup size increases unexpectedly, use the diagnostic script to identify the cause:
+
+```bash
+# Run against local demo database (formatted columns)
+docker compose exec -T db mariadb -u passbolt -pP4ssb0lt passbolt < scripts/diagnose-db-growth.sql | column -t
+
+# Or save to file
+docker compose exec -T db mariadb -u passbolt -pP4ssb0lt passbolt < scripts/diagnose-db-growth.sql > db-diagnosis.txt
+
+# Or against production MySQL (formatted)
+mysql -u user -p database < scripts/diagnose-db-growth.sql | column -t
+```
+
+**Interpreting Results:**
+
+1. **Largest tables** - Focus on tables >100MB. `action_logs` is often the culprit.
+2. **Soft deletes** - High `deleted` counts mean records aren't being purged. Example: `users 37 total, 25 deleted` = 68% are soft-deleted.
+3. **Action logs** - Check `logs_last_30d` vs `logs_last_60d`. Rapid growth indicates database logging even with file logging enabled.
+4. **History tables** - `*_history` tables accumulate over time. Check their sizes.
+5. **Secrets table** - `total_secret_data_mb` shows actual encrypted data size. Compare `avg_secret_size_bytes` before/after v5 migration.
+6. **V5 migration** - `first_created` date shows when v5 migration occurred. Correlate with backup size increase timeline.
+7. **Email queue** - Stuck emails accumulate if not processed.
+8. **Binary logs** - Check separately as root (see "Possible causes" below for commands). File-level backups include binary logs (mysqldump does not).
+
+**Possible causes:**
+- **Binary logs not purged** - MySQL 8.0+ enables binary logging by default (5.7 and earlier: disabled). If `expire_logs_days=0` or `binlog_expire_logs_seconds=0`, logs never auto-purge. **File-level backups include binary logs** (mysqldump does not). Check as root:
+  ```bash
+  mysql -u root -p -e "SHOW BINARY LOGS;"
+  mysql -u root -p -e "SHOW VARIABLES LIKE 'expire_logs_days';"
+  ```
+  Even with "no significant API hits", internal writes (syncs, maintenance) generate binary log entries.
+- Action logs in database (even with file logging enabled)
+- Soft deletes accumulating over time
+- V5 encryption increasing secret sizes
+
 ### Log Analysis
 
 #### Passbolt Logs
