@@ -317,6 +317,7 @@ services:
   # Documentation: https://github.com/rsyslog/rsyslog/tree/main/packaging/docker
   rsyslog:
     image: rsyslog/rsyslog:latest
+    platform: linux/amd64  # Explicit platform to suppress warning (image works via emulation on arm64)
     container_name: rsyslog
     restart: unless-stopped
     volumes:
