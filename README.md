@@ -472,6 +472,45 @@ Actions not logged by username strategy (use default strategy to capture all):
 - Folder operations
 - Permission changes (outside of share action)
 
+## URL/Domain Tracking
+
+Passbolt does not store which URL, domain, or hostname users access in its database. To identify which users access which URLs (useful for multi-domain setups, DNS aliases, or environment tracking), correlate nginx access logs with Passbolt action logs.
+
+### Nginx Configuration
+
+Nginx access logs include the Host header (requested domain/hostname) in each request. The custom log format is configured in `config/nginx/nginx-passbolt.conf`:
+
+```nginx
+log_format with_host '$remote_addr - $remote_user [$time_local] "$request" '
+                     '$status $body_bytes_sent "$http_referer" '
+                     '"$http_user_agent" "$http_host"';
+```
+
+### Log Correlation
+
+**Nginx logs** (via `docker compose logs passbolt`):
+- IP address, request path, Host header (domain/hostname), timestamp
+- Example: `[27/Nov/2025:01:50:40] "POST /auth/login.json" ... "passbolt.local"`
+
+**Passbolt logs** (`./logs/passbolt/syslog.log`):
+- User email, action type, timestamp
+- Example: `{"timestamp":"2025-11-27 01:50:40","user":"ada@passbolt.com","action":"user_login"}`
+
+**Correlation method:**
+1. Find `POST /auth/login.json` requests in nginx logs (includes Host header)
+2. Match with `user_login` actions in Passbolt syslog logs (includes user email)
+3. Match by timestamp (±2-3 seconds) and request path
+4. Result: `user@email.com` → `domain.example.com`
+
+**Example:**
+- Nginx: `[27/Nov/2025:01:50:40] "POST /auth/login.json" ... "passbolt.local"`
+- Passbolt: `{"timestamp":"2025-11-27 01:50:40","user":"ada@passbolt.com","action":"user_login"}`
+- Result: `ada@passbolt.com` accessed `passbolt.local`
+
+### Implementation
+
+Parse logs with a script or log aggregation tool (ELK, Splunk, etc.) to automatically correlate and generate reports showing which users access which domains/URLs.
+
 ## Keycloak SSO Configuration
 
 ### Environment Setup
