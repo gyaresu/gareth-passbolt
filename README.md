@@ -29,6 +29,7 @@
 - [SIEM Audit Logging](#siem-audit-logging)
 - [Keycloak SSO Configuration](#keycloak-sso-configuration)
 - [SMTP Configuration](#smtp-configuration)
+- [GPG Primer](#gpg-primer)
 - [User and Group Management](#user-and-group-management)
 - [Testing and Verification](#testing-and-verification)
   - [SCIM API Testing with Bruno](#scim-api-testing-with-bruno)
@@ -667,6 +668,160 @@ openssl pkcs12 -export \
 1. Create a test user in Passbolt
 2. Check for registration email in SMTP4Dev web interface
 3. Verify email content and headers
+
+## GPG Primer
+
+OpenPGP uses public-key cryptography: each user has a key pair (private + public). In passbolt, users generate or import GPG keys through the browser extension during account setup.
+
+**Note:** passbolt handles GPG operations automatically through the browser extension. Users typically don't need to use command-line GPG tools.
+
+### How passbolt Uses GPG
+
+**User Authentication:**
+- Each user has a GPG key pair (private + public)
+- Private key stored in browser extension (never sent to server)
+- Public key stored on server for encryption
+- User authenticates by decrypting server challenges with private key
+
+**Secret Encryption:**
+- Hybrid encryption model: session keys + GPG
+- Secrets encrypted with random session keys (symmetric)
+- Session keys encrypted with recipient public keys (asymmetric GPG)
+- Each recipient gets their own encrypted session key
+- Messages can be encrypted for main key or subkey (both supported)
+- Browser extension (OpenPGP.js) handles encryption/decryption client-side
+
+**Metadata Encryption (v5):**
+- Separate GPG key pairs for encrypting metadata (resource names, URIs, descriptions)
+- Metadata keys are ECC (Ed25519) GPG keys generated per user
+- Two types of metadata encryption:
+  - **Personal resources**: Encrypted with user's main GPG key (`metadata_key_type: user_key`, `metadata_key_id: null`)
+  - **Shared resources**: Encrypted with user's metadata keys (`metadata_key_type: shared_key`, `metadata_key_id: UUID`)
+- Metadata private keys encrypted with user's main GPG key and stored in database
+- Encrypted metadata stored as OpenPGP armored messages in `metadata` column (JSON containing name, uri, description)
+- Same GPG validation rules apply
+
+**Database Storage:**
+- `gpgkeys` table: Stores user public keys (GPG armored format in `armored_key` column)
+  - One active key per user (`user_id`, `deleted = false`)
+  - `fingerprint` (unique), `key_id`, `type`, `bits`, `uid`, `key_created`, `expires`
+  - Used for encrypting secrets and session keys for recipients
+- `metadata_keys` table: Stores metadata public keys (GPG armored format in `armored_key` column, `fingerprint` for key identification)
+- `metadata_private_keys` table: Stores encrypted metadata private keys per user (encrypted with user's main GPG key, in `data` column as OpenPGP message)
+  - Multiple users can share the same `metadata_key_id` (same public key, different encrypted private keys per user)
+  - `user_id` links encrypted private key to specific user
+- `resources` table: 
+  - `metadata` column (MEDIUMTEXT) stores encrypted metadata as OpenPGP armored message (JSON with name, uri, description)
+  - `metadata_key_id` references which metadata key was used (can be set for both types)
+  - `metadata_key_type` indicates encryption method (`user_key` or `shared_key`)
+  - Legacy columns (`name`, `uri`, `description`) still exist for v4 resources
+- `folders` table: Similar structure (`metadata`, `metadata_key_id`, `metadata_key_type` columns)
+- Metadata keys are shared across users; each user has their own encrypted copy of the private key
+
+**Key Management:**
+- Users have one active public key at a time (stored in `gpgkeys` table)
+- Public keys retrieved from database when encrypting for recipients
+- Metadata keys can be rotated: create new key, expire old key, re-encrypt resources, delete old key
+- Metadata keys can be expired (user keys cannot have expiry dates)
+- Keys can be soft-deleted (`deleted` flag)
+- Keys validated for encryption capability before use
+- Revocation checking: revoked keys rejected (RSA only; ECC revocation checking not yet supported)
+
+**Key Identifiers:**
+- **Fingerprint**: 40 hex characters, primary identifier (e.g., `ABCDEF1234...`)
+- **Key ID**: 8 (short) or 16 (long) hex characters
+- Long key IDs recommended for security (short IDs vulnerable to collision)
+
+**Browser Extension:**
+- Uses OpenPGP.js library for all GPG operations
+- Private keys never leave the browser
+- Decryption happens client-side
+- Supports both RSA and ECC keys
+- Key generation during user setup (client-side)
+- Account recovery: GPG keys used to decrypt recovery data
+
+**Message Validation:**
+- OpenPGP messages validated for parsing, format, and structure
+- Recipient validation: messages must be encrypted for intended recipient's key/subkey
+- Symmetric and asymmetric packet validation
+- Signature verification for authentication challenges and signed data
+
+### Key Types
+
+passbolt supports both RSA and ECC (Elliptic Curve Cryptography) GPG keys:
+
+**RSA Keys:**
+- Traditional key type (supported since early versions)
+- Allowed sizes: 2048 (non-strict), 3072, 4096 bits
+- Strict mode (recommended): 3072 or 4096 bits only
+- Larger key sizes provide stronger security but slower operations
+
+**ECC Keys (v5.6.0+):**
+- Modern Ed25519/Curve25519 (default for new users since v5.6.0)
+- Curve format: `curve25519_legacy+ed25519_legacy`
+- Comparable security to RSA-3072 with better performance
+- Smaller payload size, faster encryption/decryption
+
+**Key Validation:**
+- Supported algorithms: RSA, ECC, ECDSA, DH (strict mode excludes DSA, ELGAMAL)
+- No expiry dates allowed
+- Keys must not be expired or revoked
+- Keys must not contain multiple main packets
+- Fingerprint: 40 hex characters
+- Key ID: 8 or 16 hex characters (long IDs recommended)
+- Email must be present in key UID and match user email
+- Subkeys required: ECDH subkey for ECC, RSA subkey for RSA
+- Keys without subkeys: messages encrypted for main key ID (legacy support)
+
+**Configuration (environment variables):**
+- `PASSBOLT_PLUGINS_USER_KEY_POLICIES_PREFERRED_KEY_TYPE` - `rsa` or `curve` (default: `curve`)
+- `PASSBOLT_PLUGINS_USER_KEY_POLICIES_PREFERRED_KEY_SIZE` - RSA key size: `3072` or `4096` (null for ECC)
+- `PASSBOLT_PLUGINS_USER_KEY_POLICIES_PREFERRED_KEY_CURVE` - ECC curve: `curve25519_legacy+ed25519_legacy` (default)
+
+**Reference:** [passbolt User Key Policies Configuration](https://www.passbolt.com/docs/hosting/configure/environment-reference/#user-key-policies-configuration)
+
+### Demo User Keys
+
+Demo GPG keys for passbolt users are in `keys/gpg/`. Generated by `scripts/gpg/generate-demo-keys.sh`, these are private keys (`.key`) and public keys (`.pub`) for demo accounts.
+
+**For passbolt login:** Import the private key (`.key` file) into your passbolt account during setup via the browser extension. Passphrase is the user's email address.
+
+### Container Keyring
+
+passbolt stores its server GPG keyring at `/var/lib/passbolt/.gnupg` in the container. Server keys are imported from `/etc/passbolt/gpg/serverkey_private.asc` on startup.
+
+**Server Key Purpose:**
+- Server signing, encryption, decryption, and verification operations
+- Used for internal server operations (not user authentication)
+- Server key fingerprint and passphrase stored in configuration
+- Server key imported into container keyring on startup
+
+```bash
+# List keys in container
+docker compose exec passbolt su -s /bin/bash -c "gpg --home /var/lib/passbolt/.gnupg --list-keys" www-data
+
+# Export server public key
+docker compose exec passbolt su -s /bin/bash -c "gpg --home /var/lib/passbolt/.gnupg --armor --export" www-data
+
+# Import key into container keyring
+docker compose exec passbolt su -s /bin/bash -c "gpg --home /var/lib/passbolt/.gnupg --import" www-data < keyfile.asc
+```
+
+### Server Keyring Structure
+
+The passbolt server keyring at `/var/lib/passbolt/.gnupg` contains:
+
+```
+.gnupg/
+├── pubring.kbx          # Public keys database
+├── pubring.kbx~         # Backup of public keys database
+├── trustdb.gpg          # Trust database
+├── private-keys-v1.d/  # Private keys (encrypted, one file per key)
+├── S.gpg-agent*         # GPG agent sockets
+└── random_seed          # Entropy pool
+```
+
+**Note:** User keys are stored in the browser extension, not on the server. Only the server's own GPG keys are in this directory.
 
 ## User and Group Management
 
