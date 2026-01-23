@@ -20,11 +20,9 @@ RUN mkdir -p /root/openldap_proxy/data/certs && \
 COPY config/ldap-meta/slapd.conf /etc/ldap/slapd.conf
 COPY config/ldap-meta/entrypoint.sh /root/openldap_proxy/entrypoint.sh
 
-# Generate certificates
-RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout /root/openldap_proxy/data/certs/ldap.key \
-    -out /root/openldap_proxy/data/certs/ldap.crt \
-    -subj "/CN=ldap-meta.local"
+# Copy pre-generated certificates (avoids rebuild when certs change)
+COPY certs/ldap-meta.crt /root/openldap_proxy/data/certs/ldap.crt
+COPY certs/ldap-meta.key /root/openldap_proxy/data/certs/ldap.key
 
 # Make entrypoint executable
 RUN chmod +x /root/openldap_proxy/entrypoint.sh

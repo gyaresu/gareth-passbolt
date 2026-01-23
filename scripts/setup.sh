@@ -1,5 +1,10 @@
 #!/bin/bash
-# Setup Passbolt (full stack with LDAP, Keycloak, Traefik)
+# Setup Passbolt (full stack with LDAP aggregation, Keycloak, Traefik)
+#
+# Configuration via environment variables:
+#   ENABLE_RSYSLOG=true   - Enable rsyslog audit logging sidecar
+#   SKIP_KEYCLOAK=true    - Skip Keycloak SSO service
+#
 set -e
 
 echo "Setting up Passbolt"
@@ -13,13 +18,33 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Change to the root directory
 cd "$ROOT_DIR" || { echo "Error: Failed to change to root directory"; exit 1; }
 
+# Configuration from environment variables
+ENABLE_RSYSLOG="${ENABLE_RSYSLOG:-false}"
+SKIP_KEYCLOAK="${SKIP_KEYCLOAK:-false}"
+
+# Build docker compose command with optional profiles
+COMPOSE_CMD="docker compose"
+if [ "$ENABLE_RSYSLOG" = "true" ]; then
+    COMPOSE_CMD="docker compose --profile audit"
+    echo "Configuration: Rsyslog audit logging ENABLED"
+else
+    echo "Configuration: Rsyslog audit logging disabled (set ENABLE_RSYSLOG=true to enable)"
+fi
+
+if [ "$SKIP_KEYCLOAK" = "true" ]; then
+    echo "Configuration: Keycloak SSO DISABLED"
+else
+    echo "Configuration: Keycloak SSO enabled"
+fi
+echo ""
+
 # Function to wait for service to be ready
 wait_for_service() {
     local service=$1
     local port=$2
     local timeout=${3:-60}
     local counter=0
-    
+
     echo "Waiting for $service to be ready on port $port..."
     while [ $counter -lt $timeout ]; do
         if nc -z localhost $port 2>/dev/null; then
@@ -30,7 +55,7 @@ wait_for_service() {
         counter=$((counter + 2))
         echo "   Waiting... ($counter/$timeout seconds)"
     done
-    
+
     echo "❌ ERROR: $service failed to start within $timeout seconds"
     return 1
 }
@@ -43,7 +68,7 @@ wait_for_ldap() {
     local base_dn=$4
     local timeout=${5:-60}
     local counter=0
-    
+
     echo "Waiting for LDAP container '$container' to be ready..."
     while [ $counter -lt $timeout ]; do
         if docker compose exec $container ldapsearch -x -H ldap://localhost:389 \
@@ -55,7 +80,7 @@ wait_for_ldap() {
         counter=$((counter + 2))
         echo "   Waiting... ($counter/$timeout seconds)"
     done
-    
+
     echo "❌ ERROR: LDAP container '$container' failed to start within $timeout seconds"
     return 1
 }
@@ -101,6 +126,13 @@ else
     echo "✓ SSL certificates already exist"
 fi
 
+# Ensure ldaps_bundle.crt exists (copy from pre-generated ldap-meta cert)
+if [ ! -f "certs/ldaps_bundle.crt" ]; then
+    echo "   Creating LDAPS certificate bundle..."
+    cp certs/ldap-meta.crt certs/ldaps_bundle.crt
+    echo "✓ LDAPS certificate bundle created"
+fi
+
 if [ ! -f "smtp4dev/certs/tls.crt" ] || [ ! -f "smtp4dev/certs/tls.pfx" ]; then
     echo "   Generating SMTP certificates..."
     ./scripts/generate-smtp-certs.sh
@@ -112,19 +144,19 @@ fi
 # Step 2: Start infrastructure services
 echo ""
 echo "Step 2: Starting infrastructure services..."
-docker compose down 2>/dev/null || true
+$COMPOSE_CMD down 2>/dev/null || true
 echo "   Starting database, cache, and SMTP services..."
-docker compose up -d db valkey smtp4dev
+$COMPOSE_CMD up -d db valkey smtp4dev
 wait_for_service "Database" 3306 30
 wait_for_service "Valkey" 6379 30
-wait_for_service "SMTP4Dev" 5050 30
+wait_for_service "SMTP4Dev SMTP" 465 30
 echo "✓ Infrastructure services ready"
 
 # Step 3: Start LDAP backend servers
 echo ""
 echo "Step 3: Starting LDAP backend servers..."
 echo "   Starting LDAP1 (Passbolt Inc.) and LDAP2 (Example Corp.)..."
-docker compose up -d ldap1 ldap2
+$COMPOSE_CMD up -d ldap1 ldap2
 wait_for_ldap "ldap1" "cn=admin,dc=passbolt,dc=local" "P4ssb0lt" "dc=passbolt,dc=local"
 wait_for_ldap "ldap2" "cn=admin,dc=example,dc=com" "Ex4mple123" "dc=example,dc=com"
 echo "✓ LDAP backend servers ready"
@@ -149,35 +181,47 @@ unset COMPOSE_FILE
 echo ""
 echo "Step 6: Starting LDAP aggregation proxy..."
 echo "   Building and starting OpenLDAP meta backend..."
-docker compose up -d ldap-meta
+$COMPOSE_CMD up -d ldap-meta
 wait_for_service "LDAP Meta Proxy" 3389 60
 echo "✓ LDAP aggregation proxy ready"
 echo "   📊 Unified namespace: dc=unified,dc=local"
-echo "   🔗 Endpoint: ldap-meta.local:3389"
+echo "   🔗 Endpoint: ldap-meta.local:3636 (LDAPS)"
 
-# Step 7: Start Keycloak, Passbolt, and Traefik
+# Step 7: Start remaining services (Keycloak optional, Passbolt, Traefik)
 echo ""
-echo "Step 7: Starting Keycloak, Passbolt, and Traefik..."
-echo "   Starting SSO, password manager, and reverse proxy..."
-docker compose up -d keycloak passbolt traefik
-wait_for_service "Keycloak" 443 60
+echo "Step 7: Starting Passbolt and Traefik..."
+if [ "$SKIP_KEYCLOAK" = "true" ]; then
+    echo "   Skipping Keycloak (SKIP_KEYCLOAK=true)"
+    $COMPOSE_CMD up -d passbolt traefik
+else
+    echo "   Starting Keycloak, Passbolt, and Traefik..."
+    $COMPOSE_CMD up -d keycloak passbolt traefik
+    wait_for_service "Keycloak" 443 60
+fi
 wait_for_service "Passbolt" 443 60
-echo "✓ Keycloak, Passbolt, and Traefik ready"
 
-# Step 8: Setup LDAP certificates for Passbolt
-echo ""
-echo "Step 8: Setting up LDAP certificates..."
-echo "   Extracting LDAP certificates from containers..."
-./scripts/fix-ldaps-certificates-aggregation.sh
-echo "   Rebuilding Passbolt with certificate bundle..."
-docker compose build passbolt
-docker compose up -d passbolt
-sleep 10
-echo "✓ LDAP certificates and aggregation configuration ready"
+# Wait for Passbolt to complete initialization (migrations, etc.)
+echo "Waiting for Passbolt to complete initialization..."
+PASSBOLT_READY=false
+for i in {1..60}; do
+    if curl -sk https://passbolt.local/healthcheck/status.json 2>/dev/null | grep -q '"status":"success"'; then
+        PASSBOLT_READY=true
+        break
+    fi
+    sleep 2
+    echo "   Waiting for Passbolt health check... ($((i*2))/120 seconds)"
+done
 
-# Step 9: Generate GPG keys for demo users
+if [ "$PASSBOLT_READY" = "true" ]; then
+    echo "✓ Passbolt is fully initialized"
+else
+    echo "⚠️  Passbolt health check timed out, continuing anyway..."
+fi
+echo "✓ Services ready"
+
+# Step 8: Generate GPG keys for demo users
 echo ""
-echo "Step 9: Generating GPG keys for demo users..."
+echo "Step 8: Generating GPG keys for demo users..."
 echo "   Creating GPG keys with email=passphrase for convenience..."
 if command -v gpg &> /dev/null; then
     ./scripts/gpg/generate-demo-keys.sh
@@ -187,30 +231,46 @@ else
     echo "   Users will need to generate their own keys for Passbolt login"
 fi
 
-# Step 10: Create Passbolt admin user (ada@passbolt.com now exists in LDAP)
+# Step 9: Create Passbolt admin user (ada@passbolt.com now exists in LDAP)
 echo ""
-echo "Step 10: Creating Passbolt admin user..."
+echo "Step 9: Creating Passbolt admin user..."
 echo "   Creating admin user 'ada@passbolt.com'..."
 echo "   (This user now exists in LDAP1, so sync will work properly)"
 
-if docker compose exec passbolt su -m -c '/usr/share/php/passbolt/bin/cake passbolt register_user -u ada@passbolt.com -f "Ada" -l "Lovelace" -r admin' -s /bin/bash www-data 2>&1 | grep -q "already exists\|already registered"; then
+REGISTER_OUTPUT=$(docker compose exec -u www-data passbolt /usr/share/php/passbolt/bin/cake passbolt register_user -u ada@passbolt.com -f "Ada" -l "Lovelace" -r admin 2>&1)
+
+if echo "$REGISTER_OUTPUT" | grep -q "already exists\|already registered"; then
     echo "✓ Admin user 'ada@passbolt.com' already exists"
+    echo "   To get a new registration link, run:"
+    echo "   docker compose exec -u www-data passbolt /usr/share/php/passbolt/bin/cake passbolt recover_user -u ada@passbolt.com --create"
 else
     echo "✓ Admin user 'ada@passbolt.com' created successfully!"
-    echo "   📧 Check SMTP4Dev for registration email: http://smtp.local:5050"
+    # Extract and display the registration link
+    REGISTER_LINK=$(echo "$REGISTER_OUTPUT" | grep -o 'https://[^ ]*')
+    if [ -n "$REGISTER_LINK" ]; then
+        echo ""
+        echo "   🔗 Registration link:"
+        echo "   $REGISTER_LINK"
+        echo ""
+    fi
     if [ -f "keys/gpg/ada@passbolt.com.key" ]; then
         echo "   🔑 GPG key available: keys/gpg/ada@passbolt.com.key"
         echo "   🔐 Passphrase: ada@passbolt.com"
     fi
 fi
 
-# Step 11: LDAP synchronization setup
+# Step 10: LDAP synchronization setup
 echo ""
-echo "Step 11: LDAP synchronization setup..."
-echo "   Note: LDAP directory sync must be configured through Passbolt web UI first"
-echo "   The CakePHP command will be available after web UI configuration"
+echo "Step 10: LDAP synchronization setup..."
 echo ""
-echo "   To complete LDAP setup:"
+echo "   ┌─────────────────────────────────────────────────────────────────┐"
+echo "   │  IMPORTANT: Manual LDAP Configuration Required                  │"
+echo "   └─────────────────────────────────────────────────────────────────┘"
+echo ""
+echo "   LDAP Directory Sync must be configured through the Passbolt web UI."
+echo "   It cannot be configured via environment variables."
+echo ""
+echo "   Steps to configure:"
 echo "   1. Go to https://passbolt.local"
 echo "   2. Log in as ada@passbolt.com (passphrase: ada@passbolt.com)"
 echo "   3. Go to Administration > Directory Synchronization"
@@ -225,16 +285,19 @@ echo "   5. Test connection and run synchronization"
 echo ""
 echo "   Manual sync command (after web UI configuration):"
 echo "   docker compose exec passbolt su -s /bin/bash -c \"/usr/share/php/passbolt/bin/cake directory_sync all --persist --quiet\" www-data"
+echo ""
 echo "✓ LDAP synchronization instructions provided"
 
 # Final verification
 echo ""
-echo "✓ Traefik Setup Complete!"
-echo "========================="
+echo "✓ Setup Complete!"
+echo "================="
 echo ""
 echo "Access URLs:"
 echo "   - Passbolt:          https://passbolt.local"
-echo "   - Keycloak:          https://keycloak.local"
+if [ "$SKIP_KEYCLOAK" != "true" ]; then
+    echo "   - Keycloak:          https://keycloak.local"
+fi
 echo "   - SMTP4Dev:          https://smtp.local"
 echo "   - Traefik Dashboard: https://traefik.local"
 echo "   - LDAP Meta:         ldap-meta.local:3389 (LDAP), :3636 (LDAPS)"
@@ -255,7 +318,7 @@ echo "   - lisa.rodriguez@example.com (Lisa Rodriguez) - UX Designer"
 echo ""
 echo "LDAP Aggregation Configuration:"
 echo "   - Server: ldap-meta.local"
-echo "   - Port: 3389"
+echo "   - Port: 636 (LDAPS)"
 echo "   - Base DN: dc=unified,dc=local"
 echo "   - Bind DN: cn=admin,dc=unified,dc=local"
 echo "   - Password: secret"
@@ -273,24 +336,27 @@ echo "   - Security headers middleware applied"
 echo "   - TLS 1.2+ with strong cipher suites"
 echo "   - Docker service discovery enabled"
 echo ""
+if [ "$ENABLE_RSYSLOG" = "true" ]; then
+    echo "Rsyslog Audit Logging:"
+    echo "   - Syslog logs: logs/passbolt/syslog.log"
+    echo "   - Filter: grep 'passbolt-audit' logs/passbolt/syslog.log"
+    echo ""
+fi
 echo "Next Steps:"
-echo "1. Configure LDAP Directory Sync in Passbolt web UI"
+echo "1. Configure LDAP Directory Sync in Passbolt web UI (see instructions above)"
 echo "2. Run synchronization to import all users from both directories"
 echo "3. Test user login with GPG keys (passphrase = email)"
-echo "4. Explore Traefik dashboard at http://localhost:8080"
-echo "5. Review Traefik routing and middleware configuration"
+echo "4. Explore Traefik dashboard at https://traefik.local"
 echo ""
-echo "This demonstrates Passbolt with Traefik reverse proxy for production-like routing."
 
 # Check service status
 echo ""
 echo "Service Status:"
-if docker compose ps | grep -q "Up"; then
-    docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+if $COMPOSE_CMD ps | grep -q "Up"; then
+    $COMPOSE_CMD ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
     echo ""
     echo "All services are running successfully."
 else
     echo "Some services failed to start. Check logs with: docker compose logs"
     exit 1
 fi
-
