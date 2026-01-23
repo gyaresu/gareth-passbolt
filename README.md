@@ -808,7 +808,7 @@ The passbolt server keyring at `/var/lib/passbolt/.gnupg` contains:
 #### Verify User Addition
 ```bash
 # Check if user was added to LDAP
-docker compose exec ldap ldapsearch -x -H ldap://localhost:389 \
+docker compose exec ldap1 ldapsearch -x -H ldap://localhost:389 \
   -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
   -b "dc=passbolt,dc=local" "(cn=username)"
 
@@ -846,7 +846,7 @@ docker compose exec ldap ldapsearch -x -H ldap://localhost:389 \
 
 #### Verify Group Operations
 ```bash
-docker compose exec ldap ldapsearch -x -H ldap://localhost:389 \
+docker compose exec ldap1 ldapsearch -x -H ldap://localhost:389 \
   -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
   -b "dc=passbolt,dc=local" "(cn=<groupname>)"
 ```
@@ -974,16 +974,18 @@ curl -k --request GET \
 
 ### Manual Verification
 ```bash
-# Check LDAP server status
-docker compose exec ldap ldapsearch -x -H ldap://localhost:389 \
+# Check LDAP aggregation proxy status
+docker compose exec ldap-meta ldapsearch -x -H ldap://localhost:389 \
+  -D "cn=admin,dc=unified,dc=local" -w secret \
+  -b "dc=unified,dc=local" "(objectClass=*)"
+
+# Check individual LDAP servers
+docker compose exec ldap1 ldapsearch -x -H ldap://localhost:389 \
   -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
   -b "dc=passbolt,dc=local" "(objectClass=*)"
 
 # Check Passbolt logs
 docker compose logs passbolt
-
-# Check LDAP logs
-docker compose logs ldap
 ```
 
 ## Troubleshooting
@@ -1032,14 +1034,14 @@ docker compose up -d
 
 #### Verify Certificate Chain
 ```bash
-# Verify LDAP certificate details
-openssl x509 -in ldap-certs/ldap.crt -text -noout | grep -E "(Subject:|Issuer:|Not Before|Not After)"
-
-# Verify certificate chain integrity
-openssl verify -CAfile keys/rootCA.crt ldap-certs/ldap.crt
+# Verify ldap-meta certificate
+openssl x509 -in certs/ldap-meta.crt -text -noout | grep -E "(Subject:|Issuer:|Not Before|Not After)"
 
 # Verify LDAPS bundle (used by Passbolt)
 openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -E "(Subject:|Issuer:|Not Before|Not After)"
+
+# Test LDAPS connection
+openssl s_client -connect localhost:3636 -servername ldap-meta.local -brief
 ```
 
 ### LDAPS Connection Issues
@@ -1051,7 +1053,7 @@ openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -E "(Subject:|Issuer
 - Ensure network connectivity between containers
 
 ```bash
-docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
+docker compose exec ldap1 ldapsearch -x -H ldaps://localhost:636 \
   -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
   -b "dc=passbolt,dc=local" "(objectClass=*)"
 ```
@@ -1076,7 +1078,7 @@ docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
 **Solutions**:
 1. **Check if admin user exists:**
    ```bash
-   docker exec ldap ldapsearch -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w "P4ssb0lt" -b "dc=passbolt,dc=local" -x "(cn=admin)"
+   docker exec ldap1 ldapsearch -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w "P4ssb0lt" -b "dc=passbolt,dc=local" -x "(cn=admin)"
    ```
 
 2. **If admin user is missing, create it:**
@@ -1092,13 +1094,13 @@ docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
    EOF
    
    # Add admin user to LDAP
-   docker cp certs/admin_user.ldif ldap:/tmp/admin_user.ldif
-   docker exec ldap ldapadd -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w "P4ssb0lt" -f /tmp/admin_user.ldif
+   docker cp certs/admin_user.ldif ldap1:/tmp/admin_user.ldif
+   docker exec ldap1 ldapadd -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w "P4ssb0lt" -f /tmp/admin_user.ldif
    ```
 
 3. **Verify admin user was created:**
    ```bash
-   docker exec ldap ldapsearch -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w "P4ssb0lt" -b "dc=passbolt,dc=local" -x "(cn=admin)"
+   docker exec ldap1 ldapsearch -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w "P4ssb0lt" -b "dc=passbolt,dc=local" -x "(cn=admin)"
    ```
 
 ### Group Membership Issues
@@ -1117,10 +1119,10 @@ docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
 **Diagnosis**:
 ```bash
 # Check group membership DNs through aggregator
-docker exec ldap-meta ldapsearch -H ldap://localhost:389 -D "cn=admin,dc=unified,dc=local" -w "secret" -b "dc=unified,dc=local" "(cn=operations)"
+docker exec ldap1-meta ldapsearch -H ldap://localhost:389 -D "cn=admin,dc=unified,dc=local" -w "secret" -b "dc=unified,dc=local" "(cn=operations)"
 
 # Check user DN in unified namespace
-docker exec ldap-meta ldapsearch -H ldap://localhost:389 -D "cn=admin,dc=unified,dc=local" -w "secret" -b "dc=unified,dc=local" "(mail=user@example.com)"
+docker exec ldap1-meta ldapsearch -H ldap://localhost:389 -D "cn=admin,dc=unified,dc=local" -w "secret" -b "dc=unified,dc=local" "(mail=user@example.com)"
 ```
 
 **Solution**: The setup scripts have been updated to use the correct DN format from the start. If you encounter this issue with existing deployments, update group membership DNs to use the unified namespace format:
@@ -1242,100 +1244,28 @@ chmod 600 keys/*.key smtp4dev/certs/*.key
 chmod 644 smtp4dev/certs/tls.pfx
 ```
 
-### osixia/openldap Specific Issues
+### LDAP Connection Issues
 
-#### LDAP Container Configuration Issues
-**Symptoms**: LDAPS connection fails after modifying docker-compose.yaml
-
-**Root Cause**: Adding incorrect environment variables to the osixia/openldap container can break its internal certificate management.
-
-**Solutions**:
-1. **Use only documented environment variables** from the osixia/openldap documentation:
-   ```yaml
-   # Basic Configuration
-   LDAP_ORGANISATION: "Passbolt"
-   LDAP_DOMAIN: "passbolt.local"
-   LDAP_BASE_DN: "dc=passbolt,dc=local"
-   LDAP_ADMIN_PASSWORD: "P4ssb0lt"
-   LDAP_CONFIG_PASSWORD: "P4ssb0lt"
-   
-   # TLS Configuration
-   LDAP_TLS: "true"
-   LDAP_TLS_VERIFY_CLIENT: "never"
-   
-   # Readonly User
-   LDAP_READONLY_USER: "true"
-   LDAP_READONLY_USER_USERNAME: "readonly"
-   LDAP_READONLY_USER_PASSWORD: "readonly"
-   ```
-
-2. **Avoid custom LDAP_TLS_* variables** that are not in the official documentation
-3. **Restart the LDAP container after changes:**
-   ```bash
-   docker compose restart ldap
-   ```
-
-#### Certificate Issues with osixia/openldap
-**Symptoms**: "Can't contact LDAP server" or certificate verification failures
-
-**Root Cause**: The osixia/openldap image generates its own self-signed certificates using the `docker-light-baseimage` CA.
-
-**Solutions**:
-1. **Verify the certificate chain:**
-   ```bash
-   # Check LDAP server certificate
-   docker compose exec ldap openssl x509 -in /container/service/slapd/assets/certs/ldap.crt -text -noout | grep -A 2 -B 2 "Subject:"
-   
-   # Check CA certificate
-   docker compose exec ldap openssl x509 -in /container/service/slapd/assets/certs/ca.crt -text -noout | grep -A 2 -B 2 "Subject:"
-   ```
-
-2. **Verify certificate bundle in Passbolt:**
-   ```bash
-   # Check the certificate bundle used by Passbolt
-   openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 2 -B 2 "Subject:"
-   # Should show: CN=ldap-meta.local
-   ```
-
-3. **Regenerate certificate bundle if needed:**
-   ```bash
-   cp certs/ldap-meta.crt certs/ldaps_bundle.crt
-   docker compose build passbolt
-   docker compose up -d passbolt
-   ```
-
-#### LDAP Connection Issues
 **Symptoms**: Passbolt cannot connect to LDAP server
 
 **Solutions**:
-- Verify LDAP server is running with TLS enabled
-- Check that custom certificates are properly deployed
-- Ensure network connectivity between containers
+1. Verify ldap-meta is running: `docker compose ps ldap-meta`
+2. Test LDAPS connection: `openssl s_client -connect localhost:3636 -servername ldap-meta.local -brief`
+3. Check ldap-meta logs: `docker compose logs ldap-meta`
+4. Verify certificate bundle exists: `ls -la certs/ldaps_bundle.crt`
 
 ```bash
-docker compose exec ldap ldapsearch -x -H ldaps://localhost:636 \
-  -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
-  -b "dc=passbolt,dc=local" "(objectClass=*)"
+# Test LDAP query through aggregation proxy
+docker compose exec ldap-meta ldapsearch -x -H ldap://localhost:389 \
+  -D "cn=admin,dc=unified,dc=local" -w secret \
+  -b "dc=unified,dc=local" "(objectClass=inetOrgPerson)"
 ```
-
-#### STARTTLS vs LDAPS Configuration
-**Symptoms**: STARTTLS works externally but not from Passbolt container
-
-**Root Cause**: This is expected behavior. The osixia/openldap image supports both:
-- LDAPS (implicit TLS) on port 636 - used by Passbolt
-- LDAP with STARTTLS on port 389 - another option for Passbolt
-
-**Solutions**:
-- For Passbolt: Use LDAPS on port 636 (current configuration)
-- For another option: Use LDAP with STARTTLS on port 389
-- Both methods work with the same certificate configuration
 
 #### Verify Certificate Files Exist
 ```bash
-ls -la certs/ldaps_bundle.crt
+ls -la certs/ldap-meta.crt certs/ldap-meta.key certs/ldaps_bundle.crt
 ls -la smtp4dev/certs/tls.crt smtp4dev/certs/tls.pfx
-ls -la ldap-certs/ldap.crt ldap-certs/ldap.key ldap-certs/ca.crt
-ls -la keys/rootCA.crt keys/keycloak.crt
+ls -la keys/rootCA.crt keys/keycloak.crt keys/passbolt.crt
 ```
 
 #### Verify Subscription Key
@@ -1392,7 +1322,7 @@ docker compose logs -f passbolt
 #### LDAP Logs
 ```bash
 docker compose logs ldap
-docker compose exec ldap ldapsearch -x -H ldap://localhost:389 \
+docker compose exec ldap1 ldapsearch -x -H ldap://localhost:389 \
   -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
   -b "cn=config" "(objectClass=*)"
 ```
