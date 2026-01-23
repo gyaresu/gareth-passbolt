@@ -39,33 +39,40 @@
 
 ### Automated Setup
 
-Choose your LDAP integration approach:
-
-**Default (Traefik + LDAP Aggregation):**
 ```bash
 ./scripts/setup.sh
 ```
-Full stack with Traefik reverse proxy, LDAP aggregation via OpenLDAP meta backend.
 
-**LDAP Aggregation with Nginx:**
+This sets up the full stack with Traefik reverse proxy, LDAP aggregation via OpenLDAP meta backend, Keycloak SSO, and all supporting services.
+
+**Configuration Options** (environment variables):
+
 ```bash
-./scripts/setup-aggregation-demo.sh
-```
-OpenLDAP meta backend with Nginx instead of Traefik. Uses direct port access.
+# Enable rsyslog audit logging sidecar
+ENABLE_RSYSLOG=true ./scripts/setup.sh
 
-**Direct Multi-Domain:**
-```bash
-./scripts/setup-dual-ldap.sh
-```
-Passbolt connects directly to multiple LDAP servers via PHP configuration.
+# Skip Keycloak SSO service
+SKIP_KEYCLOAK=true ./scripts/setup.sh
 
-**Single LDAP with Nginx:**
-```bash
-./scripts/setup-nginx-single.sh
+# Combine options
+ENABLE_RSYSLOG=true SKIP_KEYCLOAK=true ./scripts/setup.sh
 ```
-Basic single directory setup with Nginx.
 
-All scripts set up LDAP directories, generate GPG keys, and create Passbolt admin user 'ada'. See [LDAP Integration](#ldap-integration) for detailed comparison.
+The setup script creates LDAP directories, generates GPG keys, and creates the admin user 'ada@passbolt.com'.
+
+**Important: Manual LDAP Configuration Required**
+
+After setup, configure LDAP Directory Sync in the Passbolt web UI:
+1. Go to https://passbolt.local
+2. Log in as ada@passbolt.com (passphrase: ada@passbolt.com)
+3. Administration → Directory Synchronization
+4. Configure settings:
+   - Host: `ldap-meta.local`
+   - Port: `636` (LDAPS)
+   - Base DN: `dc=unified,dc=local`
+   - Username: `cn=admin,dc=unified,dc=local`
+   - Password: `secret`
+   - Use SSL: `true`
 
 ### Manual Setup
 
@@ -117,16 +124,7 @@ All scripts set up LDAP directories, generate GPG keys, and create Passbolt admi
 
 ## LDAP Integration
 
-Two approaches for multi-directory LDAP integration for educational comparison.
-
-### Approach Comparison
-
-| Aspect | Aggregation (Default) | Direct Multi-Domain |
-|--------|----------------------|---------------------|
-| Architecture | Infrastructure proxy | Application-level |
-| Configuration | Web UI or PHP file | Web UI or PHP file |
-| LDAP Endpoint | Single unified (ldap-meta) | Multiple direct (ldap1, ldap2) |
-| Setup Script | `setup-aggregation-demo.sh` | `setup-dual-ldap.sh` |
+The stack uses LDAP aggregation via OpenLDAP meta backend for multi-directory integration.
 
 ### Directory Structure
 
@@ -148,45 +146,17 @@ dc=passbolt,dc=unified,dc=local → LDAP1
 dc=example,dc=unified,dc=local → LDAP2
 ```
 
-### Aggregation Approach Configuration
+### LDAP Aggregation Configuration
 
-Passbolt connects to single meta backend. Configure via Web UI or use included PHP configuration (`config/passbolt/ldap.php`).
+Passbolt connects to a single meta backend that transparently proxies to both LDAP1 and LDAP2. Configure via Web UI after running setup.
 
 **LDAP Meta Settings:**
 - Host: `ldap-meta.local`
 - Port: `636` (LDAPS)
 - Base DN: `dc=unified,dc=local`
-- Username: `cn=readonly,dc=passbolt,dc=unified,dc=local` (PHP config) or `cn=admin,dc=unified,dc=local` (Web UI)
-- Password: `readonly` (PHP config) or `secret` (Web UI)
+- Username: `cn=admin,dc=unified,dc=local`
+- Password: `secret`
 - Use SSL: `true`
-
-The meta backend transparently proxies to both LDAP1 and LDAP2.
-
-### Direct Multi-Domain Approach Configuration
-
-Passbolt connects directly to both LDAP servers. Configure via Passbolt Web UI or use the included PHP configuration example (`config/passbolt/ldap.php`).
-
-**PHP Configuration Example:**
-
-The repository includes a ready-to-use multi-domain configuration at `config/passbolt/ldap.php` with two domains:
-
-**LDAP1 (Passbolt domain):**
-- Host: `ldap1.local`
-- Port: `636` (LDAPS)
-- Base DN: `dc=passbolt,dc=local`
-- Username: `cn=readonly,dc=passbolt,dc=local`
-- Password: `readonly`
-- Paths: `ou=users`, `ou=groups`
-
-**LDAP2 (Example domain):**
-- Host: `ldap2.local`
-- Port: `636` (LDAPS)
-- Base DN: `dc=example,dc=com`
-- Username: `cn=reader,dc=example,dc=com`
-- Password: `reader123`
-- Paths: `ou=people`, `ou=teams`
-
-**Note:** The PHP config is not used by default (Web UI configuration takes precedence). To use the PHP config, mount it into the Passbolt container.
 
 **Sync Command:**
 ```bash
@@ -198,14 +168,14 @@ docker compose exec passbolt su -s /bin/bash -c "/usr/share/php/passbolt/bin/cak
 All LDAP connections use LDAPS (port 636) with SSL/TLS encryption.
 
 **Certificate Management:**
-- osixia/openldap auto-generates self-signed certificates
-- `./scripts/fix-ldaps-certificates.sh` extracts certificates from containers
-- Certificates bundled into Passbolt container at build time
+- ldap-meta uses pre-generated certificates committed to the repository (`certs/ldap-meta.crt`)
+- osixia/openldap (ldap1, ldap2) auto-generates self-signed certificates
+- Passbolt trusts the ldap-meta certificate via the ldaps_bundle.crt
 
 **Test LDAPS:**
 ```bash
-docker compose exec passbolt openssl s_client -connect ldap:636 \
-  -servername ldap.local -CAfile /etc/ssl/certs/ldaps_bundle.crt -brief
+docker compose exec passbolt openssl s_client -connect ldap-meta.local:636 \
+  -servername ldap-meta.local -CAfile /etc/ssl/certs/ldaps_bundle.crt -brief
 ```
 
 ### LDAP Server Configuration
@@ -282,13 +252,6 @@ YAML files (fixes indentation issues in Passbolt docs):
 
 ```bash
 ./scripts/validate-traefik-config.sh  # Checks YAML syntax, tabs, indentation
-```
-
-### Use Nginx Instead
-
-```bash
-docker compose down
-docker compose -f docker-compose.nginx.yaml up -d
 ```
 
 ## Services Overview
@@ -437,9 +400,11 @@ tail -f logs/passbolt/syslog.log | grep --line-buffered 'passbolt-audit'
 grep "passbolt-audit" logs/passbolt/syslog.log | tail -n 20
 ```
 
-### Rsyslog Sidecar
+### Rsyslog Sidecar (Optional)
 
-Rsyslog sidecar container:
+Rsyslog sidecar is disabled by default. Enable with `ENABLE_RSYSLOG=true ./scripts/setup.sh` or `docker compose --profile audit up -d`.
+
+When enabled:
 - Receives logs from Passbolt via shared Unix socket (`/dev/log`)
 - Writes to `./logs/passbolt/syslog.log`
 - Can forward to external syslog servers
@@ -919,11 +884,11 @@ Before testing user removal, ensure Passbolt is configured to suspend users rath
 ### LDAPS Connectivity Test
 ```bash
 # Test LDAPS connection from Passbolt container
-docker compose exec passbolt openssl s_client -connect ldap:636 \
-  -servername ldap.local -CAfile /etc/ssl/certs/ldaps_bundle.crt -brief
+docker compose exec passbolt openssl s_client -connect ldap-meta:636 \
+  -servername ldap-meta.local -CAfile /etc/ssl/certs/ldaps_bundle.crt -brief
 
-# Test LDAPS connection from host (if certificates are trusted)
-openssl s_client -connect ldap.local:636 -servername ldap.local -brief
+# Test LDAPS connection from host
+openssl s_client -connect localhost:3636 -servername ldap-meta.local -brief
 ```
 
 ### SMTP Service Status
@@ -1031,46 +996,38 @@ docker compose logs ldap
 **Root Cause**: The LDAP server uses its own self-signed certificate issued by `docker-light-baseimage`, but the certificate bundle is missing the CA certificate or contains incorrect certificates.
 
 **Solutions**:
-1. **Verify the certificate bundle contains both server and CA certificates:**
+1. **Verify the certificate bundle exists:**
    ```bash
-   # Check certificate count (should be 2)
-   grep -c "BEGIN CERTIFICATE" certs/ldaps_bundle.crt
-   
-   # Check server certificate subject
+   # Check certificate subject
    openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 2 -B 2 "Subject:" | head -3
-   # Should show: Subject: CN=ldap.local
+   # Should show: Subject: CN=ldap-meta.local
    ```
 
-2. **If the bundle is incorrect, regenerate it:**
+2. **If the bundle is incorrect, copy the pre-generated certificate:**
    ```bash
-   # Run the certificate fix script (extracts from container)
-   ./scripts/fix-ldaps-certificates.sh
-   
+   # Copy the ldap-meta certificate to the bundle
+   cp certs/ldap-meta.crt certs/ldaps_bundle.crt
+
    # Rebuild Passbolt container to pick up new bundle
    docker compose build passbolt
    docker compose up -d passbolt
    ```
 
-3. **Verify the certificate SAN matches:**
-   ```bash
-   openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 5 "Subject Alternative Name"
-   # Should show: DNS:ldap.local
-   ```
-
 #### Regenerate Certificates
 ```bash
-# Step 1: Generate new certificate hierarchy
+# Step 1: Generate new certificate hierarchy (for Passbolt, Keycloak, etc.)
 ./scripts/generate-certificates.sh
 
-# Step 2: Deploy certificates to LDAP container (optional - for custom certificates)
-./scripts/setup-ldap-certs.sh
+# Step 2: Regenerate ldap-meta certificate (if needed)
+openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+  -keyout certs/ldap-meta.key \
+  -out certs/ldap-meta.crt \
+  -subj "/CN=ldap-meta.local"
+cp certs/ldap-meta.crt certs/ldaps_bundle.crt
 
-# Step 3: Fix LDAPS bundle for Passbolt (extracts from container)
-./scripts/fix-ldaps-certificates.sh
-
-# Step 4: Rebuild Passbolt container to pick up new certificate bundle
-docker compose build passbolt
-docker compose up -d passbolt
+# Step 3: Rebuild containers to pick up new certificates
+docker compose build ldap-meta passbolt
+docker compose up -d
 ```
 
 #### Verify Certificate Chain
@@ -1337,12 +1294,12 @@ chmod 644 smtp4dev/certs/tls.pfx
    ```bash
    # Check the certificate bundle used by Passbolt
    openssl x509 -in certs/ldaps_bundle.crt -text -noout | grep -A 2 -B 2 "Subject:"
-   # Should show: CN=ldap.local
+   # Should show: CN=ldap-meta.local
    ```
 
 3. **Regenerate certificate bundle if needed:**
    ```bash
-   ./scripts/fix-ldaps-certificates.sh
+   cp certs/ldap-meta.crt certs/ldaps_bundle.crt
    docker compose build passbolt
    docker compose up -d passbolt
    ```
@@ -1444,10 +1401,13 @@ docker compose exec ldap ldapsearch -x -H ldap://localhost:389 \
 
 Key directories:
 - `scripts/` - Setup and management scripts
-- `certs/` - Certificate files (LDAPS bundle, SMTP certificates)
-- `config/` - Configuration files (PHP, SSL, database)
+- `certs/` - Certificate files (LDAPS bundle, ldap-meta certificates)
+- `config/` - Configuration files (traefik, ldap-meta, rsyslog, PHP, database)
+- `keys/` - TLS certificates and GPG keys
+- `bruno/` - SCIM API test collection
 - `assets/` - Documentation screenshots
-- `docker-compose.yaml` - Main configuration
+- `docker-compose.yaml` - Main Docker Compose configuration
+- `.env` - Project name and configuration options
 
 ## Contributing
 
