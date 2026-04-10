@@ -334,6 +334,7 @@ services:
     environment:
       CLAUDE_NO_TELEMETRY: "true"
       CLAUDE_CONFIG_DIR: /home/vscode/.claude
+    restart: unless-stopped
     entrypoint: /workspaces/gareth-passbolt/.devcontainer/entrypoint.sh
     networks:
       default:
