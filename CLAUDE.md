@@ -180,7 +180,7 @@ When investigating issues or verifying claims, cross-reference between repos. Fo
 | passbolt | passbolt.local | `curl -sk https://passbolt.local` |
 | Database | db | `mariadb -h db -u passbolt -pP4ssb0lt passbolt` |
 | Keycloak | keycloak.local | `curl -sk https://keycloak.local` |
-| LDAP Meta | ldap-meta.local | `ldapsearch -x -H ldap://ldap-meta.local:389 -b "dc=unified,dc=local"` |
+| LDAP Meta | ldap-meta.local | `ldapsearch -x -H ldaps://ldap-meta.local:636 -b "dc=unified,dc=local" -D "cn=admin,dc=unified,dc=local" -w secret` |
 | Valkey | valkey | Port 6379 |
 | SMTP4Dev | smtp.local | `curl -sk https://smtp.local` |
 
@@ -191,6 +191,10 @@ A persistent semantic memory service is available for storing and retrieving kno
 - Remember verified code behaviors
 - Track patterns across customer issues
 - Retrieve context from previous work
+
+### Git Commits and Signing
+
+Git commits are GPG-signed via 1Password on the macOS host. The 1Password agent socket cannot be forwarded into the Colima VM, so **do not commit from inside the devcontainer**. Instead, make code changes in the devcontainer and leave committing and pushing to the host.
 
 ### Output Directory
 
