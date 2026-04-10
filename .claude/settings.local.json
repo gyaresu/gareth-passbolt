@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.passbolt.com)",
+      "WebFetch(domain:community.passbolt.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:help.passbolt.com)",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:docs.keeper.io)",
+      "WebFetch(domain:passbolt.com)",
+      "WebFetch(domain:developer.chrome.com)",
+      "WebFetch(domain:hub.docker.com)",
+      "WebFetch(domain:containers.dev)",
+      "WebFetch(domain:code.visualstudio.com)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": false
+  }
+}
