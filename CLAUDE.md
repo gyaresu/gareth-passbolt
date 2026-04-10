@@ -154,3 +154,64 @@ The `scripts/tests/` directory contains SQL scripts and shell scripts for invest
 - `test-secret-update-resource-modified.sh` - Tests resource modification behavior
 
 Each has an accompanying README explaining the investigation context.
+
+## Devcontainer Environment
+
+When running inside the devcontainer (`docker compose exec devcontainer bash`), Claude has access to:
+
+### Source Repos at `/workspaces/`
+
+All repos from `~/code` are mounted at `/workspaces/`. Key repos:
+
+| Repo | Language | Purpose |
+|------|----------|---------|
+| `passbolt-pro-api` | PHP/CakePHP | Server-side API, models, controllers, plugins |
+| `passbolt-browser-extension` | JavaScript | Browser extension (Chrome, Firefox, Safari) |
+| `passbolt-docs` | Markdown | Documentation site (passbolt.com/docs) |
+| `passbolt-styleguide` | React/JS | Shared UI component library |
+| `gareth-passbolt` | Docker/Bash | This testing stack |
+
+When investigating issues or verifying claims, cross-reference between repos. For example, check how the API handles a request AND how the extension calls it.
+
+### Stack Services (accessible by hostname)
+
+| Service | Hostname | Access |
+|---------|----------|--------|
+| passbolt | passbolt.local | `curl -sk https://passbolt.local` |
+| Database | db | `mariadb -h db -u passbolt -pP4ssb0lt passbolt` |
+| Keycloak | keycloak.local | `curl -sk https://keycloak.local` |
+| LDAP Meta | ldap-meta.local | `ldapsearch -x -H ldap://ldap-meta.local:389 -b "dc=unified,dc=local"` |
+| Valkey | valkey | Port 6379 |
+| SMTP4Dev | smtp.local | `curl -sk https://smtp.local` |
+
+### MCP Memory Service
+
+A persistent semantic memory service is available for storing and retrieving knowledge across sessions. Use it to:
+- Store findings from bug investigations
+- Remember verified code behaviors
+- Track patterns across customer issues
+- Retrieve context from previous work
+
+### Output Directory
+
+Customer responses and copyable text go to `/home/vscode/passbolt_responses/` (mounted from host).
+
+## Customer Support Responses
+
+When drafting customer support email responses, output them as HTML files for rich-text copying into HubSpot:
+
+1. Create `~/passbolt_responses/` directory if it doesn't exist (mounted at `/home/vscode/passbolt_responses/` inside the devcontainer)
+2. Write the response to `~/passbolt_responses/<topic>-<YYYY-MM-DD>.html`
+   - Topic: kebab-case summary (e.g. `ldap-sync-email-aliases`)
+3. Run `open <file>` to open in the default browser
+4. User copies from browser (Cmd+A, Cmd+C) and pastes into HubSpot
+
+HTML requirements:
+- Inline styles only (no external CSS/fonts)
+- System font stack, ~14px body text
+- **Bold text** instead of headings (headings look oversized in email)
+- Use `<br><br>` between paragraphs (not `<p>` or `<div>`, HubSpot strips their margins)
+- Before/after `<ul>` lists, do NOT add `<br>`. The list's own margin handles spacing.
+- Supported elements: `<b>`, `<ul>`/`<li>`, `<code>`, bare text with `<br><br>`
+- Documentation links: plain inline URLs (not hyperlinked text)
+- No wrapper chrome (no page title bar, footer, etc.). Just the email body content.

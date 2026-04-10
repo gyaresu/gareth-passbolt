@@ -1,5 +1,6 @@
 subscription_key.txt
 .DS_Store
+plans/
 data
 gpg_volume
 jwt_volume
