@@ -176,15 +176,18 @@ Once running, Claude can store and retrieve knowledge across sessions. Configure
 
 ### Custom Skills
 
-Five skills are available for Claude Code (both on the host and inside the devcontainer):
+Skills available for Claude Code (both on the host and inside the devcontainer):
 
 | Skill | Purpose |
 |-------|---------|
 | `/verify` | Verify a claim against source code |
 | `/investigate` | Diagnose a bug across repos and the running stack |
+| `/lookup-history` | Search prior customer interactions and investigation findings |
 | `/draft-response` | Generate a customer support response with verified facts |
+| `/review-response` | Validate a draft response against tone and HTML format rules |
 | `/check-docs` | Compare documentation against code |
 | `/test-scenario` | Test a scenario against the live stack |
+| `/write-docs` | Write or update a passbolt-docs page with verified claims |
 
 Type the slash command followed by context, e.g.:
 
@@ -199,6 +202,12 @@ Type the slash command followed by context, e.g.:
 ```
 /verify Does passbolt send an email notification when a password is shared?
 ```
+
+```
+/write-docs new page covering LDAPS certificate setup under admin/authentication/ldap
+```
+
+`/write-docs` edits files under `/workspaces/passbolt-docs` and runs `npm run lint:fix:mdx` inside the devcontainer. Preview (`npm run start`) runs on the **host**, not inside the devcontainer: `passbolt-docs` requires Node >= 24 but the devcontainer ships Node 22, and port 3000 is not mapped in `docker-compose.yaml`. `/workspaces/passbolt-docs` and `~/code/passbolt-docs` are the same bind mount, so edits made in the devcontainer are picked up by a host-side dev server automatically.
 
 ### First-time Claude setup (inside the devcontainer)
 
