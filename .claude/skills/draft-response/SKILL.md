@@ -29,12 +29,16 @@ Examples:
    - No sign-off (email signature handles it)
    - Documentation links: plain inline URLs to passbolt.com/docs (not help.passbolt.com)
    - Use "Organisation Settings" not "Administration" for admin panel references
-5. Write the HTML file to `/home/vscode/passbolt_responses/<topic>-<YYYY-MM-DD>.html`
+5. Check `/home/vscode/passbolt_responses/INDEX.md` for any previous responses on the same topic that could be referenced or updated.
+6. Write the HTML file to `/home/vscode/passbolt_responses/<topic>-<YYYY-MM-DD>.html`
    - Inline styles only, system font stack, ~14px body text
    - Bold text instead of headings
    - `<br><br>` between paragraphs (not `<p>` or `<div>`)
    - No `<br>` before or after `<ul>` lists
    - Wrap in `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5;">`
+7. Append an entry to `/home/vscode/passbolt_responses/INDEX.md`:
+   `- YYYY-MM-DD | filename-without-extension | one-line summary (under 80 chars)`
+   Keep the file sorted newest first (insert at the top, after the header).
 
 ## Constraints
 

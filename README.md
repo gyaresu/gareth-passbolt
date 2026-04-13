@@ -176,7 +176,7 @@ Once running, Claude can store and retrieve knowledge across sessions. Configure
 
 ### Custom Skills
 
-Five skills are available for Claude inside the devcontainer:
+Five skills are available for Claude Code (both on the host and inside the devcontainer):
 
 | Skill | Purpose |
 |-------|---------|
@@ -185,6 +185,20 @@ Five skills are available for Claude inside the devcontainer:
 | `/draft-response` | Generate a customer support response with verified facts |
 | `/check-docs` | Compare documentation against code |
 | `/test-scenario` | Test a scenario against the live stack |
+
+Type the slash command followed by context, e.g.:
+
+```
+/investigate Customer reports that updating a password doesn't change the "modified" date on the resource
+```
+
+```
+/draft-response Customer asks: "We enabled LDAP sync but users aren't being created. We're using port 389 with SSL enabled."
+```
+
+```
+/verify Does passbolt send an email notification when a password is shared?
+```
 
 ### Configuration
 
