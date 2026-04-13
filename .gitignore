@@ -41,5 +41,6 @@ ldap-certs/*.key
 keys/
 ldap-certs/
 
-# Local tool config (schlock bash safety validator)
-.claude/hooks/
+# schlock hooks: commit the shared config, keep per-user state out
+.claude/hooks/*
+!.claude/hooks/schlock-config.yaml
