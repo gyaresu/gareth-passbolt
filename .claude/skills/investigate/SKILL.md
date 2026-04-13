@@ -26,11 +26,19 @@ Examples:
    - Database: `mariadb -h db -u passbolt -pP4ssb0lt passbolt -e "SQL HERE"`
    - API: `curl -sk https://passbolt.local`
    - LDAP: `ldapsearch -x -H ldap://ldap-meta.local:389 -b "dc=unified,dc=local" "(filter)"`
-6. Produce a diagnostic report:
+6. Check `/home/vscode/passbolt_responses/findings/` for any previous investigations on similar topics.
+7. Produce a diagnostic report:
    - **Affected files** with paths and line numbers
    - **Recent changes** that may be relevant
    - **Root cause** (confirmed or hypothesized, clearly labeled)
    - **Proposed fix** (description only, do not implement)
+8. Save a findings summary to `/home/vscode/passbolt_responses/findings/<topic>-<YYYY-MM-DD>.md` with:
+   - **Topic**: one-line description
+   - **Date**: today's date
+   - **Question/Ticket**: the original report from $ARGUMENTS
+   - **Finding**: what was determined (root cause, behavior explanation, etc.)
+   - **Relevant code paths**: file:line references
+   - **Resolution**: proposed fix or "investigation only"
 
 ## Constraints
 
@@ -38,8 +46,7 @@ Examples:
 - Clearly distinguish between confirmed facts and hypotheses.
 - If you need to make changes to the running stack to test, ASK first.
 - Always include file:line references for any code you cite.
-- Check the MCP memory service for any previous investigations on similar issues.
-- Store key findings in the MCP memory service for future reference.
+- Always save a findings summary (step 8) so future investigations can reference it.
 
 ## Usage
 
