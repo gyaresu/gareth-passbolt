@@ -196,6 +196,16 @@ A persistent semantic memory service is available for storing and retrieving kno
 
 Git commits are GPG-signed via 1Password on the macOS host. The 1Password agent socket cannot be forwarded into the Colima VM, so **do not commit from inside the devcontainer**. Instead, make code changes in the devcontainer and leave committing and pushing to the host.
 
+### Dev servers for mounted repos
+
+Run dev servers (Docusaurus for `passbolt-docs`, webpack/vite for the styleguide or browser extension, etc.) on the **host**, not inside the devcontainer:
+
+- The devcontainer has Node 22, but `passbolt-docs` requires Node >= 24 per its `CONTRIBUTING.md`. Other repos may have similar newer-Node requirements.
+- Only the stack's own ports are mapped in `docker-compose.yaml` (80, 443, 465, 3389, 3636, 6379). Dev server ports like 3000 are not forwarded.
+- `/workspaces/<repo>` in the devcontainer and `~/code/<repo>` on the host are the same bind mount, so edits made via Claude are picked up by a host-side dev server with no sync step.
+
+Lint / test commands that fit the devcontainer's Node version can still run inside the devcontainer (e.g. `npm run lint:fix:mdx` for passbolt-docs works on Node 22).
+
 ### Output Directory
 
 Customer responses and copyable text go to `/home/vscode/passbolt_responses/` (mounted from host).

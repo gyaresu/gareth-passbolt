@@ -200,12 +200,30 @@ Type the slash command followed by context, e.g.:
 /verify Does passbolt send an email notification when a password is shared?
 ```
 
+### First-time Claude setup (inside the devcontainer)
+
+The schlock plugin provides bash safety validation, commit-message filtering, and shellcheck on Write/Edit. It runs inside the devcontainer only. The container has its own `~/.claude/plugins/` directory (backed by the `claude_plugins` named volume), so install records are scoped to the container and do not depend on host state.
+
+Inside the devcontainer, once per volume:
+
+```
+/plugin marketplace add 27Bslash6/schlock
+/plugin install schlock@schlock
+```
+
+The shared rule set ships with the repo at `.claude/hooks/schlock-config.yaml`, so everyone on the team runs the same thresholds.
+
+Notes:
+- `docker compose down -v` wipes the `claude_plugins` volume. Re-run the two `/plugin` commands after rebuilding.
+- Host-side Claude is unaffected by this install.
+
 ### Configuration
 
 - `.devcontainer/devcontainer.json` - Devcontainer settings (used by VS Code/devcontainer CLI)
 - `.devcontainer/entrypoint.sh` - Tool installation and startup
 - `.claude/settings.local.json` - Claude Code sandbox and permissions
 - `.claude/skills/` - Custom Claude skills
+- `.claude/hooks/schlock-config.yaml` - Shared schlock rules
 - `.mcp.json` - MCP server configuration (memory service)
 
 ## LDAP Integration

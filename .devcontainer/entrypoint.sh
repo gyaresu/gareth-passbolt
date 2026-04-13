@@ -9,6 +9,7 @@ if ! command -v node &>/dev/null || ! command -v git &>/dev/null; then
     mariadb-client \
     ldap-utils \
     php-cli php-mbstring php-xml \
+    python3 python3-venv \
     iputils-ping dnsutils net-tools \
     vim less \
     shellcheck \
@@ -17,10 +18,16 @@ if ! command -v node &>/dev/null || ! command -v git &>/dev/null; then
   apt-get install -y nodejs &>/dev/null
 fi
 
-# Backfill shellcheck on existing containers (used by hook at .claude/hooks-local/shellcheck-hook.sh)
+# Backfill shellcheck on existing containers (schlock's shellcheck rule and /verify workflows both use it)
 if ! command -v shellcheck &>/dev/null; then
   apt-get update &>/dev/null
   apt-get install -y shellcheck &>/dev/null
+fi
+
+# Backfill python3 on existing containers (required by the schlock plugin's hook entry points)
+if ! command -v python3 &>/dev/null; then
+  apt-get update &>/dev/null
+  apt-get install -y python3 python3-venv &>/dev/null
 fi
 
 # Install/update Claude Code

@@ -329,6 +329,10 @@ services:
     volumes:
       - ${HOME}/code:/workspaces:cached
       - ${HOME}/.claude:/home/vscode/.claude:cached
+      # Override plugins/ with a container-local named volume so install records
+      # reference container paths (/home/vscode/...) instead of the host's
+      # (/Users/gareth/...). Host-side plugin state is left untouched.
+      - claude_plugins:/home/vscode/.claude/plugins
       - ${HOME}/.claude.json:/home/vscode/.claude.json:cached
       - ${HOME}/passbolt_responses:/home/vscode/passbolt_responses:cached
     environment:
@@ -434,4 +438,6 @@ volumes:
     name: ${COMPOSE_PROJECT_NAME}_qdrant_data
   memory_data:
     name: ${COMPOSE_PROJECT_NAME}_memory_data
+  claude_plugins:
+    name: ${COMPOSE_PROJECT_NAME}_claude_plugins
 
