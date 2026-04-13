@@ -11,9 +11,16 @@ if ! command -v node &>/dev/null || ! command -v git &>/dev/null; then
     php-cli php-mbstring php-xml \
     iputils-ping dnsutils net-tools \
     vim less \
+    shellcheck \
     &>/dev/null
   curl -fsSL https://deb.nodesource.com/setup_22.x | bash - &>/dev/null
   apt-get install -y nodejs &>/dev/null
+fi
+
+# Backfill shellcheck on existing containers (used by hook at .claude/hooks-local/shellcheck-hook.sh)
+if ! command -v shellcheck &>/dev/null; then
+  apt-get update &>/dev/null
+  apt-get install -y shellcheck &>/dev/null
 fi
 
 # Install/update Claude Code

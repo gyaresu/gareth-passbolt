@@ -1,6 +1,7 @@
 ---
 name: test-scenario
 description: Test a scenario against the running passbolt stack
+model: sonnet
 ---
 
 # Test Scenario

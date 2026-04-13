@@ -1,6 +1,7 @@
 ---
 name: check-docs
 description: Compare passbolt documentation against actual code behavior
+model: sonnet
 ---
 
 # Check Docs

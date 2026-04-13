@@ -14,7 +14,8 @@
       "WebFetch(domain:developer.chrome.com)",
       "WebFetch(domain:hub.docker.com)",
       "WebFetch(domain:containers.dev)",
-      "WebFetch(domain:code.visualstudio.com)"
+      "WebFetch(domain:code.visualstudio.com)",
+      "Skill(update-config)"
     ]
   },
   "sandbox": {
