@@ -73,7 +73,7 @@ Do not invent other fields.
 - Components available: `Figure`, `Chips`, `CodeBlock`, `Video`, `DistributionCard`, `ProviderCard`. Only use a component when the page already imports it, or when you are explicitly adding the import at the top of the file.
 - Internal links: root-relative with trailing slash, e.g. `[Directory sync](/docs/admin/directory-sync/)`.
 - Images: reference as `/img/...` in MDX. Files live under `/static/` mirroring the doc's folder structure. Example: a doc at `/docs/hosting/setup/configuration/firewall-rules.mdx` stores images at `/static/admin/setup/configuration/firewall-rules/`. If the image does not exist, leave `<!-- TODO: add image at /static/... -->` — do not fabricate files.
-- Before duplicating any boilerplate, check the section's `_includes/` directory (e.g. `/workspaces/passbolt-docs/docs/hosting/_includes/`) for a partial you can import.
+- Before duplicating any boilerplate, check the section's `_includes/` directory (e.g. `/workspaces/passbolt-docs/docs/hosting/_includes/`) for a partial you can import. If no suitable partial exists and the same content would appear on more than one page, create one: add a new `_name.mdx` file under the appropriate `_includes/` subfolder (underscore-prefixed filenames are the convention, grouped by topic like `default/`, `troubleshooting/`, `https/`), then import it from each consuming page rather than duplicating the text inline.
 
 ## Constraints
 
