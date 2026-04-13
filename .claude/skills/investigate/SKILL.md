@@ -1,6 +1,7 @@
 ---
 name: investigate
 description: Diagnose a reported bug by reading source code, git history, and the running stack
+model: opus
 ---
 
 # Investigate

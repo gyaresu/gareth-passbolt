@@ -1,6 +1,7 @@
 ---
 name: verify
 description: Verify a claim or support answer against passbolt source code
+model: sonnet
 ---
 
 # Verify
