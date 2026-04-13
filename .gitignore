@@ -40,3 +40,6 @@ ldap-certs/*.crt
 ldap-certs/*.key
 keys/
 ldap-certs/
+
+# Local tool config (schlock bash safety validator)
+.claude/hooks/
