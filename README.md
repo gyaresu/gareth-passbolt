@@ -375,6 +375,19 @@ YAML files (fixes indentation issues in Passbolt docs):
 - SMTP4Dev: https://smtp.local
 - Traefik Dashboard: https://traefik.local
 
+### Internal routing: Passbolt to Keycloak
+
+Keycloak listens on `8443` inside its container, not `443`, so Passbolt can't reach `https://keycloak.local` through the compose DNS alias (which would hit the container directly on `:443`). Traffic has to loop back out through Traefik, which publishes `:443` on the docker host and proxies to `keycloak:8443`.
+
+The `passbolt` service in `docker-compose.yaml` has:
+
+```yaml
+extra_hosts:
+  - "keycloak.local:host-gateway"
+```
+
+This overrides `keycloak.local` inside the Passbolt container so it resolves to the docker host instead of the Keycloak container. `host-gateway` is docker's built-in alias for the host IP and works regardless of the compose network subnet. A previous hardcoded value (`172.19.0.1`) broke once the `devcontainer` service joined the project and docker assigned a different subnet.
+
 ### Validate Config
 
 ```bash

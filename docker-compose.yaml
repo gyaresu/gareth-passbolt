@@ -98,7 +98,7 @@ services:
       - ldap1
       - ldap2
     extra_hosts:
-      - "keycloak.local:172.19.0.1"
+      - "keycloak.local:host-gateway"
     environment:
       APP_FULL_BASE_URL: https://passbolt.local
       DATASOURCES_DEFAULT_HOST: "db"
