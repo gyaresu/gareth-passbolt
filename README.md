@@ -186,7 +186,7 @@ Verify:
 claude mcp list  # should show: memory: http://mcp-memory:8001/mcp (HTTP) - ✓ Connected
 ```
 
-Restart the Claude Code session (`exit`, then `dev`) so the `mcp__memory__*` tools load. Once connected, Claude can store and retrieve knowledge across sessions via `store_memory`, `search`, `check_database_health`, etc.
+Restart the Claude Code session (`exit` out of Claude and the devcontainer, then reconnect with `docker compose exec -u vscode devcontainer bash` and run `claude`) so the `mcp__memory__*` tools load. Once connected, Claude can store and retrieve knowledge across sessions via `store_memory`, `search`, `check_database_health`, etc.
 
 ### Custom Skills
 
