@@ -15,9 +15,16 @@
       "WebFetch(domain:hub.docker.com)",
       "WebFetch(domain:containers.dev)",
       "WebFetch(domain:code.visualstudio.com)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "WebFetch(domain:issues.chromium.org)",
+      "WebFetch(domain:support.pingidentity.com)",
+      "WebFetch(domain:docs.pingidentity.com)",
+      "mcp__memory__check_database_health"
     ]
   },
+  "enabledMcpjsonServers": [
+    "memory"
+  ],
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": false
