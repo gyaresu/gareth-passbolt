@@ -172,7 +172,21 @@ git clone https://github.com/27b-io/mcp-memory-service ~/code/mcp-memory-service
 docker compose --profile memory up -d
 ```
 
-Once running, Claude can store and retrieve knowledge across sessions. Configured in `.mcp.json`.
+**Register with Claude Code (inside the devcontainer):**
+
+The project's `.mcp.json` points at `http://mcp-memory:8001/mcp`, but Claude Code tracks per-project MCP approval by absolute path. The host approval (`/Users/you/code/gareth-passbolt`) does not carry into the devcontainer (`/workspaces/gareth-passbolt`), so register it at user scope once per devcontainer volume:
+
+```bash
+claude mcp add --scope user memory --transport http http://mcp-memory:8001/mcp
+```
+
+Verify:
+
+```bash
+claude mcp list  # should show: memory: http://mcp-memory:8001/mcp (HTTP) - ✓ Connected
+```
+
+Restart the Claude Code session (`exit`, then `dev`) so the `mcp__memory__*` tools load. Once connected, Claude can store and retrieve knowledge across sessions via `store_memory`, `search`, `check_database_health`, etc.
 
 ### Custom Skills
 
