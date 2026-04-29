@@ -40,7 +40,3 @@ ldap-certs/*.crt
 ldap-certs/*.key
 keys/
 ldap-certs/
-
-# schlock hooks: commit the shared config, keep per-user state out
-.claude/hooks/*
-!.claude/hooks/schlock-config.yaml

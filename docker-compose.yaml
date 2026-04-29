@@ -318,72 +318,6 @@ services:
     networks:
       default:
 
-  # Claude Code devcontainer for support work
-  # Shares the stack network so Claude can reach all services by hostname
-  devcontainer:
-    image: mcr.microsoft.com/devcontainers/base:ubuntu
-    container_name: passbolt-support
-    working_dir: /workspaces/gareth-passbolt
-    stdin_open: true
-    tty: true
-    volumes:
-      - ${HOME}/code:/workspaces:cached
-      - ${HOME}/.claude:/home/vscode/.claude:cached
-      # Override plugins/ with a container-local named volume so install records
-      # reference container paths (/home/vscode/...) instead of the host's
-      # (/Users/gareth/...). Host-side plugin state is left untouched.
-      - claude_plugins:/home/vscode/.claude/plugins
-      - ${HOME}/.claude.json:/home/vscode/.claude.json:cached
-      - ${HOME}/passbolt_responses:/home/vscode/passbolt_responses:cached
-    environment:
-      CLAUDE_NO_TELEMETRY: "true"
-      CLAUDE_CONFIG_DIR: /home/vscode/.claude
-    restart: unless-stopped
-    entrypoint: /workspaces/gareth-passbolt/.devcontainer/entrypoint.sh
-    networks:
-      default:
-
-  # Qdrant vector database for MCP memory service
-  # Start with: docker compose --profile memory up -d
-  qdrant:
-    profiles: ["memory"]
-    image: qdrant/qdrant:latest
-    container_name: qdrant
-    restart: unless-stopped
-    volumes:
-      - qdrant_data:/qdrant/storage
-    healthcheck:
-      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-    networks:
-      default:
-
-  # MCP memory service - persistent semantic memory for Claude
-  # Requires: git clone https://github.com/27b-io/mcp-memory-service ~/code/mcp-memory-service
-  # Start with: docker compose --profile memory up -d
-  mcp-memory:
-    profiles: ["memory"]
-    build:
-      context: ${HOME}/code/mcp-memory-service
-      dockerfile: Dockerfile
-    container_name: mcp-memory
-    restart: unless-stopped
-    depends_on:
-      qdrant:
-        condition: service_healthy
-    environment:
-      MCP_TRANSPORT_MODE: streamable-http
-      MCP_SERVER_PORT: "8001"
-      MCP_QDRANT_URL: http://qdrant:6333
-      MCP_FALKORDB_ENABLED: "false"
-    volumes:
-      - memory_data:/app/data
-    networks:
-      default:
-
   traefik:
     image: traefik:v3.6
     container_name: traefik
@@ -434,10 +368,4 @@ volumes:
     name: ${COMPOSE_PROJECT_NAME}_ldap_meta_config
   ldap_meta_certs:
     name: ${COMPOSE_PROJECT_NAME}_ldap_meta_certs
-  qdrant_data:
-    name: ${COMPOSE_PROJECT_NAME}_qdrant_data
-  memory_data:
-    name: ${COMPOSE_PROJECT_NAME}_memory_data
-  claude_plugins:
-    name: ${COMPOSE_PROJECT_NAME}_claude_plugins
 
