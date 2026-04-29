@@ -20,7 +20,7 @@
 
 ## Table of Contents
 
-- [Devcontainer](#devcontainer)
+- [Connecting from Claude](#connecting-from-claude)
 
 - [Quick Start](#quick-start)
 - [LDAP Integration](#ldap-integration)
@@ -124,36 +124,20 @@ After setup, configure LDAP Directory Sync in the Passbolt web UI:
 - Requires valid Passbolt Pro subscription key in `subscription_key.txt`
 - Demo credentials are for testing only - use strong credentials in production
 
-## Devcontainer
+## Connecting from Claude
 
-The stack includes a devcontainer with Claude Code for support and development work. It starts alongside all other services and has network access to the full stack.
-
-### Connecting
+Claude Code and the persistent memory service live in a separate `gareth-dock` repo, not in this stack. To work against this stack from Claude:
 
 ```bash
-docker compose exec -u vscode devcontainer bash
+# host: bring this stack up
+cd ~/code/gareth-passbolt
+docker compose up -d
+
+# inside the gareth-dock devcontainer
+dock gareth-passbolt
 ```
 
-Or add an alias to your shell:
-```bash
-alias dev='docker compose -f ~/code/gareth-passbolt/docker-compose.yaml exec -u vscode devcontainer bash'
-```
-
-### What's Inside
-
-The devcontainer includes:
-
-**Tools:** curl, wget, jq, mariadb-client, ldap-utils (ldapsearch), php-cli, Node.js, git, vim, dig, ping
-
-**Claude Code:** Installed on first start, auto-updated on every container restart. Run `claude login` after a rebuild.
-
-**Source repos:** All repos from `~/code` are mounted at `/workspaces/`. Key repos for support:
-- `passbolt-pro-api` - Server-side API (PHP/CakePHP)
-- `passbolt-browser-extension` - Browser extension (JavaScript)
-- `passbolt-docs` - Documentation site
-- `passbolt-styleguide` - UI component library
-
-**Direct service access from inside the container:**
+Once attached, Claude can reach this stack's services by hostname/alias:
 
 | Service | Command |
 |---------|---------|
@@ -163,91 +147,7 @@ The devcontainer includes:
 | Keycloak | `curl -sk https://keycloak.local` |
 | SMTP4Dev | `curl -sk https://smtp.local` |
 
-### MCP Memory Service (Optional)
-
-A persistent semantic memory service (Qdrant + MCP Memory) is available behind the `memory` profile. It requires cloning the memory service repo first:
-
-```bash
-git clone https://github.com/27b-io/mcp-memory-service ~/code/mcp-memory-service
-docker compose --profile memory up -d
-```
-
-**Register with Claude Code (inside the devcontainer):**
-
-The project's `.mcp.json` points at `http://mcp-memory:8001/mcp`, but Claude Code tracks per-project MCP approval by absolute path. The host approval (`/Users/you/code/gareth-passbolt`) does not carry into the devcontainer (`/workspaces/gareth-passbolt`), so register it at user scope once per devcontainer volume:
-
-```bash
-claude mcp add --scope user memory --transport http http://mcp-memory:8001/mcp
-```
-
-Verify:
-
-```bash
-claude mcp list  # should show: memory: http://mcp-memory:8001/mcp (HTTP) - ✓ Connected
-```
-
-Restart the Claude Code session (`exit` out of Claude and the devcontainer, then reconnect with `docker compose exec -u vscode devcontainer bash` and run `claude`) so the `mcp__memory__*` tools load. Once connected, Claude can store and retrieve knowledge across sessions via `store_memory`, `search`, `check_database_health`, etc.
-
-### Custom Skills
-
-Skills available for Claude Code (both on the host and inside the devcontainer):
-
-| Skill | Purpose |
-|-------|---------|
-| `/verify` | Verify a claim against source code |
-| `/investigate` | Diagnose a bug across repos and the running stack |
-| `/lookup-history` | Search prior customer interactions and investigation findings |
-| `/draft-response` | Generate a customer support response with verified facts |
-| `/review-response` | Validate a draft response against tone and HTML format rules |
-| `/check-docs` | Compare documentation against code |
-| `/test-scenario` | Test a scenario against the live stack |
-| `/write-docs` | Write or update a passbolt-docs page with verified claims |
-
-Type the slash command followed by context, e.g.:
-
-```
-/investigate Customer reports that updating a password doesn't change the "modified" date on the resource
-```
-
-```
-/draft-response Customer asks: "We enabled LDAP sync but users aren't being created. We're using port 389 with SSL enabled."
-```
-
-```
-/verify Does passbolt send an email notification when a password is shared?
-```
-
-```
-/write-docs new page covering LDAPS certificate setup under admin/authentication/ldap
-```
-
-`/write-docs` edits files under `/workspaces/passbolt-docs` and runs `npm run lint:fix:mdx` inside the devcontainer. Preview (`npm run start`) runs on the **host**, not inside the devcontainer: `passbolt-docs` requires Node >= 24 but the devcontainer ships Node 22, and port 3000 is not mapped in `docker-compose.yaml`. `/workspaces/passbolt-docs` and `~/code/passbolt-docs` are the same bind mount, so edits made in the devcontainer are picked up by a host-side dev server automatically.
-
-### First-time Claude setup (inside the devcontainer)
-
-The schlock plugin provides bash safety validation, commit-message filtering, and shellcheck on Write/Edit. It runs inside the devcontainer only. The container has its own `~/.claude/plugins/` directory (backed by the `claude_plugins` named volume), so install records are scoped to the container and do not depend on host state.
-
-Inside the devcontainer, once per volume:
-
-```
-/plugin marketplace add 27Bslash6/schlock
-/plugin install schlock@schlock
-```
-
-The shared rule set ships with the repo at `.claude/hooks/schlock-config.yaml`, so everyone on the team runs the same thresholds.
-
-Notes:
-- `docker compose down -v` wipes the `claude_plugins` volume. Re-run the two `/plugin` commands after rebuilding.
-- Host-side Claude is unaffected by this install.
-
-### Configuration
-
-- `.devcontainer/devcontainer.json` - Devcontainer settings (used by VS Code/devcontainer CLI)
-- `.devcontainer/entrypoint.sh` - Tool installation and startup
-- `.claude/settings.local.json` - Claude Code sandbox and permissions
-- `.claude/skills/` - Custom Claude skills
-- `.claude/hooks/schlock-config.yaml` - Shared schlock rules
-- `.mcp.json` - MCP server configuration (memory service)
+See `~/code/gareth-dock/README.md` and `~/code/gareth-dock/CLAUDE.md` for the full devcontainer / memory / customer-support workflow, including the workflow skills (`/verify`, `/investigate`, `/draft-response`, etc.) which ship with `gareth-dock`.
 
 ## LDAP Integration
 
@@ -386,7 +286,7 @@ extra_hosts:
   - "keycloak.local:host-gateway"
 ```
 
-This overrides `keycloak.local` inside the Passbolt container so it resolves to the docker host instead of the Keycloak container. `host-gateway` is docker's built-in alias for the host IP and works regardless of the compose network subnet. A previous hardcoded value (`172.19.0.1`) broke once the `devcontainer` service joined the project and docker assigned a different subnet.
+This overrides `keycloak.local` inside the Passbolt container so it resolves to the docker host instead of the Keycloak container. `host-gateway` is docker's built-in alias for the host IP and works regardless of the compose network subnet (a previous hardcoded value, `172.19.0.1`, broke whenever docker assigned a different subnet).
 
 ### Validate Config
 
@@ -406,9 +306,6 @@ This overrides `keycloak.local` inside the Passbolt container so it resolves to 
 | LDAP2     | ldap2.local:636 (LDAPS) | cn=reader,dc=example,dc=com / reader123 | Example Corp directory |
 | LDAP Meta | ldap-meta.local:636 (LDAPS) | cn=admin,dc=unified,dc=local / secret | Aggregation proxy |
 | Valkey    | valkey:6379 (internal)    | N/A               | Session storage |
-| Devcontainer | N/A (exec into it)    | N/A               | Claude Code + dev tools |
-| Qdrant    | qdrant:6333 (internal)    | N/A               | Vector database (memory profile) |
-| MCP Memory | mcp-memory:8001 (internal) | N/A              | Semantic memory (memory profile) |
 
 ## Valkey Session Handling
 
@@ -1473,16 +1370,14 @@ docker compose exec ldap1 ldapsearch -x -H ldap://localhost:389 \
 ## Repository Structure
 
 Key directories:
-- `.devcontainer/` - Devcontainer configuration and entrypoint
-- `.claude/` - Claude Code settings, skills, and hooks
+- `.claude/` - Claude Code settings, skills, and hooks (loaded when Claude is working from this repo)
 - `scripts/` - Setup and management scripts
 - `certs/` - Certificate files (LDAPS bundle, ldap-meta certificates)
 - `config/` - Configuration files (traefik, ldap-meta, rsyslog, PHP, database)
 - `keys/` - TLS certificates and GPG keys
 - `bruno/` - SCIM API test collection
 - `assets/` - Documentation screenshots
-- `docker-compose.yaml` - Main Docker Compose configuration (includes devcontainer, qdrant, mcp-memory)
-- `.mcp.json` - MCP server configuration for Claude Code
+- `docker-compose.yaml` - Docker Compose configuration
 - `.env` - Project name and configuration options
 
 ## Contributing

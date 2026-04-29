@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "memory": {
-      "type": "url",
-      "url": "http://mcp-memory:8001/mcp"
-    }
-  }
-}
