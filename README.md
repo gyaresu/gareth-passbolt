@@ -1257,7 +1257,7 @@ api:
 **Symptoms**: 404 errors, services not accessible
 
 **Fix**:
-- Check dashboard: http://localhost:8080
+- Check dashboard: http://localhost:8081
 - Verify certificates exist in `keys/`
 - Confirm Docker socket mounted: `/var/run/docker.sock:/var/run/docker.sock:ro`
 - Check service has `traefik.enable=true` label

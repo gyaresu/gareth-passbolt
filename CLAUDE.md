@@ -118,7 +118,7 @@ The stack uses LDAP aggregation via OpenLDAP meta backend (`ldap-meta`). Passbol
 | Passbolt | 443 | https://passbolt.local |
 | Keycloak | 443 | https://keycloak.local |
 | SMTP4Dev | 443/465 | https://smtp.local |
-| Traefik | 8080 | https://traefik.local |
+| Traefik | 8081 | https://traefik.local |
 | LDAP Meta | 3389/3636 | ldap-meta.local (LDAP/LDAPS) |
 
 ### Directory Structure
