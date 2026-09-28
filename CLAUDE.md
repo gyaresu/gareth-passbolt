@@ -14,11 +14,12 @@ Docker-based demonstration stack for Passbolt Pro password manager showcasing en
 
 ### Configuration Options
 
-Set environment variables before running setup:
+Set environment variables before running setup. Both are off by default — Keycloak runs,
+and audit logs go to file only, unless you set these:
 
 ```bash
-ENABLE_RSYSLOG=true ./scripts/setup.sh   # Enable rsyslog audit logging sidecar
-SKIP_KEYCLOAK=true ./scripts/setup.sh    # Skip Keycloak SSO service
+ENABLE_RSYSLOG=true ./scripts/setup.sh   # Enable rsyslog audit logging sidecar (default: off, file logging still works)
+SKIP_KEYCLOAK=true ./scripts/setup.sh    # Skip Keycloak SSO service (default: Keycloak enabled)
 ```
 
 ### Important: Manual LDAP Configuration Required
@@ -103,9 +104,21 @@ Rsyslog ← Audit logging sidecar (optional, ENABLE_RSYSLOG=true)
 
 The stack uses LDAP aggregation via OpenLDAP meta backend (`ldap-meta`). Passbolt connects to a unified view at `dc=unified,dc=local` which proxies to both backend LDAP servers transparently.
 
+### Demo Users
+
+LDAP1 (Passbolt Inc.) is seeded with five famous women in computing; GPG key passphrase = email. LDAP2 (Example Corp: John Smith, Sarah Johnson, Michael Chen, Lisa Rodriguez) is a deliberately separate, generically named org for the aggregation demo.
+
+| User | Known for | Email |
+|------|-----------|-------|
+| Ada Lovelace | First published algorithm for a machine | `ada@passbolt.com` (admin) |
+| Betty Holberton | Original ENIAC programmer | `betty@passbolt.com` |
+| Carol Shaw | Early professional video-game designer | `carol@passbolt.com` |
+| Dame Stephanie Shirley | Founded a women-staffed software house | `dame@passbolt.com` |
+| Edith Clarke | First US woman EE professor | `edith@passbolt.com` |
+
 ### Key Configuration Files
 
-- `docker-compose.yaml` - Service definitions
+- `docker-compose.yaml` - Service definitions (passbolt pinned to floating `latest-pro`; tracks newest Pro release on pull, not version-pinned)
 - `.env` - Project name and configuration options
 - `config/traefik/` - Reverse proxy routing and TLS
 - `config/ldap-meta/slapd.conf` - OpenLDAP meta backend config
@@ -157,11 +170,6 @@ Each has an accompanying README explaining the investigation context.
 
 ## Reaching this stack from Claude
 
-Claude lives in `gareth-dock`, not here. To work against this stack from Claude, attach the devcontainer to its docker network:
+If Claude Code runs in a separate devcontainer, join that container to this stack's docker network to reach its services by hostname. The network is `dev_default` (the compose project name is `dev`; confirm with `docker network ls`); join it as an external network via a `docker-compose.override.yml`.
 
-```bash
-# inside the gareth-dock devcontainer
-dock gareth-passbolt
-```
-
-Then services resolve directly: `passbolt.local`, `db`, `valkey`, `keycloak.local`, `ldap-meta.local`, `smtp.local`. See `~/code/gareth-dock/CLAUDE.md` for the full devcontainer / customer-support / commit-signing guidance.
+Once joined, services resolve directly: `passbolt.local`, `db`, `valkey`, `keycloak.local`, `ldap-meta.local`, `smtp.local`.

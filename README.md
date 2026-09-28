@@ -12,6 +12,12 @@
 - Certificate automation for development and testing
 - SCIM API testing with Bruno
 
+The passbolt image uses the floating `passbolt/passbolt:latest-pro` tag on purpose, so
+the stack picks up the newest Pro release on the next `docker compose pull`. The
+trade-off: it isn't tied to a version, so two people can end up on different builds.
+Pin an exact tag (e.g. `passbolt/passbolt:5.16.0-1-pro`) if you need everyone on the
+same version.
+
 ## Prerequisites
 
 - Docker and Docker Compose
@@ -20,8 +26,6 @@
 
 ## Table of Contents
 
-- [Connecting from Claude](#connecting-from-claude)
-
 - [Quick Start](#quick-start)
 - [LDAP Integration](#ldap-integration)
 - [Traefik Reverse Proxy (Default)](#traefik-reverse-proxy-default)
@@ -29,6 +33,7 @@
 - [Valkey Session Handling](#valkey-session-handling)
 - [Environment Variables Configuration](#environment-variables-configuration)
 - [SIEM Audit Logging](#siem-audit-logging)
+- [URL/Domain Tracking](#urldomain-tracking)
 - [Keycloak SSO Configuration](#keycloak-sso-configuration)
 - [SMTP Configuration](#smtp-configuration)
 - [GPG Primer](#gpg-primer)
@@ -36,6 +41,7 @@
 - [Testing and Verification](#testing-and-verification)
   - [SCIM API Testing with Bruno](#scim-api-testing-with-bruno)
 - [Troubleshooting](#troubleshooting)
+- [Repository Structure](#repository-structure)
 
 ## Quick Start
 
@@ -124,31 +130,6 @@ After setup, configure LDAP Directory Sync in the Passbolt web UI:
 - Requires valid Passbolt Pro subscription key in `subscription_key.txt`
 - Demo credentials are for testing only - use strong credentials in production
 
-## Connecting from Claude
-
-Claude Code and the persistent memory service live in a separate `gareth-dock` repo, not in this stack. To work against this stack from Claude:
-
-```bash
-# host: bring this stack up
-cd ~/code/gareth-passbolt
-docker compose up -d
-
-# inside the gareth-dock devcontainer
-dock gareth-passbolt
-```
-
-Once attached, Claude can reach this stack's services by hostname/alias:
-
-| Service | Command |
-|---------|---------|
-| Database | `mariadb -h db -u passbolt -pP4ssb0lt passbolt` |
-| LDAP | `ldapsearch -x -H ldap://ldap-meta.local:389 -b "dc=unified,dc=local"` |
-| Passbolt API | `curl -sk https://passbolt.local` |
-| Keycloak | `curl -sk https://keycloak.local` |
-| SMTP4Dev | `curl -sk https://smtp.local` |
-
-See `~/code/gareth-dock/README.md` and `~/code/gareth-dock/CLAUDE.md` for the full devcontainer / memory / customer-support workflow, including the workflow skills (`/verify`, `/investigate`, `/draft-response`, etc.) which ship with `gareth-dock`.
-
 ## LDAP Integration
 
 The stack uses LDAP aggregation via OpenLDAP meta backend for multi-directory integration.
@@ -172,6 +153,25 @@ ou=teams: project-teams, security, operations, creative
 dc=passbolt,dc=unified,dc=local → LDAP1
 dc=example,dc=unified,dc=local → LDAP2
 ```
+
+### Demo Users
+
+LDAP1 (Passbolt Inc.) is seeded with five famous women in computing. Each one has a GPG
+key made by `scripts/gpg/generate-demo-keys.sh`, and **the key passphrase is just the
+user's email address**. `ada@passbolt.com` is also the passbolt admin that `setup.sh`
+creates.
+
+| User | Known for | Email | Groups |
+|------|-----------|-------|--------|
+| Ada Lovelace | Wrote the first published algorithm intended for a machine (Babbage's Analytical Engine) | `ada@passbolt.com` | passbolt, developers, admins |
+| Betty Holberton | One of the six original programmers of ENIAC | `betty@passbolt.com` | passbolt, developers, demoteam |
+| Carol Shaw | Among the first professional video-game designers (Atari, Activision) | `carol@passbolt.com` | passbolt, developers |
+| Dame Stephanie Shirley | Founded the software house F International, staffed almost entirely by women programmers | `dame@passbolt.com` | passbolt, admins |
+| Edith Clarke | First woman professor of electrical engineering in the US; first woman to deliver a paper at the AIEE | `edith@passbolt.com` | passbolt, demoteam |
+
+LDAP2 (Example Corp — John Smith, Sarah Johnson, Michael Chen, Lisa Rodriguez) is a
+separate company on purpose. It's there to show the meta backend merging two independent
+directories, so its users have plain corporate names instead of pioneers.
 
 ### LDAP Aggregation Configuration
 
@@ -1370,15 +1370,18 @@ docker compose exec ldap1 ldapsearch -x -H ldap://localhost:389 \
 ## Repository Structure
 
 Key directories:
-- `.claude/` - Claude Code settings, skills, and hooks (loaded when Claude is working from this repo)
-- `scripts/` - Setup and management scripts
-- `certs/` - Certificate files (LDAPS bundle, ldap-meta certificates)
-- `config/` - Configuration files (traefik, ldap-meta, rsyslog, PHP, database)
-- `keys/` - TLS certificates and GPG keys
+- `scripts/` - Setup and management scripts (setup, cert/GPG generation, LDAP seeding, tests)
+- `config/` - Configuration files (traefik, ldap-meta, nginx, PHP, database, rsyslog)
+- `keys/` - TLS certificates and GPG keys (generated on setup)
+- `certs/` - LDAPS certificate bundles for the meta backend
 - `bruno/` - SCIM API test collection
-- `assets/` - Documentation screenshots
+- `assets/` - Documentation screenshots and avatars
+- `smtp4dev/` - SMTP4Dev TLS certificates
+- `plans/` - Working notes (gitignored)
 - `docker-compose.yaml` - Docker Compose configuration
+- `Dockerfile.ldap-meta` - Custom OpenLDAP meta/aggregation backend image
 - `.env` - Project name and configuration options
+- `LICENSE` - AGPL v3
 
 ## Contributing
 

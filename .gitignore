@@ -12,31 +12,16 @@ logs/
 master-realm.json
 passbolt-realm.json
 
-# Generated certificates
-keys/*.crt
-keys/*.key
-keys/*.csr
-keys/*.srl
-keys/*.pem
-ldap-certs/*.crt
-ldap-certs/*.key
-ldap-certs/*.csr
-ldap-certs/*.pem
+# Generated keys and certificates (GPG keys under keys/gpg/, TLS certs, SSL config).
+# Ignore everything under keys/ except the placeholder so secrets never get committed.
+keys/*
+!keys/.gitkeep
 
 # Downloaded LDAP certificates (regenerated on each setup)
 certs/ldap-local.crt
 certs/ldaps_bundle.crt
 
-# Keep directories but not their contents
-!keys/.gitkeep
-!ldap-certs/.gitkeep
+# Keep placeholder directories but not their contents
 !config/db/.gitkeep
 !config/php/.gitkeep
 !config/ssl/.gitkeep
-keys/*.crt
-keys/*.key
-keys/*.srl
-ldap-certs/*.crt
-ldap-certs/*.key
-keys/
-ldap-certs/
