@@ -163,15 +163,15 @@ creates.
 
 | User | Known for | Email | Groups |
 |------|-----------|-------|--------|
-| Ada Lovelace | Wrote the first published algorithm intended for a machine (Babbage's Analytical Engine) | `ada@passbolt.com` | passbolt, developers, admins |
-| Betty Holberton | One of the six original programmers of ENIAC | `betty@passbolt.com` | passbolt, developers, demoteam |
-| Carol Shaw | Among the first professional video-game designers (Atari, Activision) | `carol@passbolt.com` | passbolt, developers |
-| Dame Stephanie Shirley | Founded the software house F International, staffed almost entirely by women programmers | `dame@passbolt.com` | passbolt, admins |
-| Edith Clarke | First woman professor of electrical engineering in the US; first woman to deliver a paper at the AIEE | `edith@passbolt.com` | passbolt, demoteam |
+| [Ada Lovelace](https://en.wikipedia.org/wiki/Ada_Lovelace) | Wrote the first published algorithm intended for a machine (Babbage's Analytical Engine) | `ada@passbolt.com` | passbolt, developers, admins |
+| [Betty Holberton](https://en.wikipedia.org/wiki/Betty_Holberton) | One of the six original programmers of ENIAC | `betty@passbolt.com` | passbolt, developers, demoteam |
+| [Carol Shaw](https://en.wikipedia.org/wiki/Carol_Shaw) | Among the first professional video-game designers (Atari, Activision) | `carol@passbolt.com` | passbolt, developers |
+| [Dame Stephanie Shirley](https://en.wikipedia.org/wiki/Steve_Shirley) | Founded the software house F International, staffed almost entirely by women programmers | `dame@passbolt.com` | passbolt, admins |
+| [Edith Clarke](https://en.wikipedia.org/wiki/Edith_Clarke) | First woman professor of electrical engineering in the US; first woman to deliver a paper at the AIEE | `edith@passbolt.com` | passbolt, demoteam |
 
 LDAP2 (Example Corp — John Smith, Sarah Johnson, Michael Chen, Lisa Rodriguez) is a
 separate company on purpose. It's there to show the meta backend merging two independent
-directories, so its users have plain corporate names instead of pioneers.
+directories, so its users have generic placeholder names instead of famous pioneers.
 
 ### LDAP Aggregation Configuration
 
