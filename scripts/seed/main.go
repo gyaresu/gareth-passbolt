@@ -116,6 +116,12 @@ func run() error {
 	defer client.Logout(ctx)
 	fmt.Printf("Logged in as %s at %s\n", data.Owner, baseURL)
 
+	// Fail before creating anything if v5 is off: icons/colours are v5 metadata
+	// and the resources are v5, so without it nothing useful would be created.
+	if !client.MetadataTypeSettings().AllowCreationOfV5Resources {
+		return fmt.Errorf("v5 resource creation is disabled on this instance; enable encrypted metadata in Administration first")
+	}
+
 	groupIDs, err := resolveGroups(ctx, client, data.ShareGroups)
 	if err != nil {
 		return err
