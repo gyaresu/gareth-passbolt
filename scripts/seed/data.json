@@ -1,0 +1,611 @@
+{
+  "owner": "ada@passbolt.com",
+  "shareGroups": [
+    "developers",
+    "demoteam"
+  ],
+  "folders": [
+    {
+      "path": "Admin",
+      "shared": true
+    },
+    {
+      "path": "Clients",
+      "shared": true
+    },
+    {
+      "path": "Marketing",
+      "shared": true
+    },
+    {
+      "path": "Personal",
+      "shared": false
+    },
+    {
+      "path": "Product Management",
+      "shared": true
+    },
+    {
+      "path": "Sales",
+      "shared": true
+    },
+    {
+      "path": "Clients/Da Vinci",
+      "shared": true
+    },
+    {
+      "path": "Clients/Gibson",
+      "shared": true
+    },
+    {
+      "path": "Clients/Da Vinci/Databases",
+      "shared": true
+    },
+    {
+      "path": "Clients/Gibson/API",
+      "shared": true
+    },
+    {
+      "path": "Clients/Gibson/Databases",
+      "shared": true
+    },
+    {
+      "path": "Clients/Gibson/DevOps",
+      "shared": true
+    },
+    {
+      "path": "Clients/Gibson/Others",
+      "shared": true
+    },
+    {
+      "path": "Clients/Gibson/Servers",
+      "shared": true
+    },
+    {
+      "path": "Clients/Gibson/Social medias",
+      "shared": true
+    }
+  ],
+  "resources": [
+    {
+      "name": "Gitlab",
+      "username": "ada@passbolt.com",
+      "uri": "https://about.gitlab.com/",
+      "folder": "Clients/Gibson/DevOps",
+      "description": "CI/CD and source hosting for the Gibson account.",
+      "icon": 30,
+      "color": "#FC6D26",
+      "totp": true,
+      "favorite": true,
+      "shared": true
+    },
+    {
+      "name": "Postgresql",
+      "username": "irene@passbolt.com",
+      "uri": "https://www.postgresql.org/",
+      "folder": "Clients/Gibson/Databases",
+      "description": "Primary Postgres cluster for Gibson.",
+      "icon": 27,
+      "color": "#336791",
+      "totp": false,
+      "favorite": true,
+      "shared": true
+    },
+    {
+      "name": "Facebook",
+      "username": "jean@passbolt.com",
+      "uri": "https://www.facebook.com/",
+      "folder": "Personal",
+      "description": "Personal Facebook login.",
+      "icon": 1,
+      "color": "#1877F2",
+      "totp": true,
+      "favorite": false,
+      "shared": false
+    },
+    {
+      "name": "Twitter",
+      "username": "ada@passbolt.com",
+      "uri": "",
+      "folder": "Marketing",
+      "description": "Brand Twitter/X account.",
+      "icon": 1,
+      "color": "#1DA1F2",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Twitter",
+      "username": "ada@passbolt.com",
+      "uri": "https://twitter.com/",
+      "folder": "Clients/Gibson/Social medias",
+      "description": "Brand Twitter/X account.",
+      "icon": 1,
+      "color": "#1DA1F2",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Github",
+      "username": "Irene Greif",
+      "uri": "https://github.com/",
+      "folder": "Admin",
+      "description": "Org GitHub login for releases and mirrors.",
+      "icon": 30,
+      "color": "#6E5494",
+      "totp": true,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Stripe",
+      "username": "ada@passbolt.com",
+      "uri": "https://stripe.com/",
+      "folder": "Admin",
+      "description": "Billing and payments dashboard.",
+      "icon": 37,
+      "color": "#635BFF",
+      "totp": true,
+      "favorite": true,
+      "shared": true
+    },
+    {
+      "name": "PhpMyAdmin",
+      "username": "Ada Lovelace",
+      "uri": "https://www.phpmyadmin.net/",
+      "folder": "Product Management",
+      "description": "Web admin for the MySQL databases.",
+      "icon": 27,
+      "color": "#6C78AF",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Mysql",
+      "username": "ada@passbolt.com",
+      "uri": "https://www.mysql.com/",
+      "folder": "Clients/Gibson/Databases",
+      "description": "Gibson MySQL primary.",
+      "icon": 27,
+      "color": "#00758F",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "NPM",
+      "username": "Hedy Lamarr",
+      "uri": "https://www.npmjs.com/",
+      "folder": "Admin",
+      "description": "npm registry publish token.",
+      "icon": 47,
+      "color": "#CB3837",
+      "totp": true,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Snyk",
+      "username": "hedy@passbolt.com",
+      "uri": "https://snyk.io/",
+      "folder": "Admin",
+      "description": "Dependency and container vulnerability scanning.",
+      "icon": 2,
+      "color": "#4C4A73",
+      "totp": true,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "GPG Key IBM",
+      "username": "ada@passbolt.com",
+      "uri": "",
+      "folder": "Clients/Gibson/Others",
+      "description": "GPG signing key shared with IBM.",
+      "icon": 0,
+      "color": "#0530AD",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "AWS EC2",
+      "username": "jean@passbolt.com",
+      "uri": "https://aws.amazon.com/ec2/",
+      "folder": "Clients/Gibson/Servers",
+      "description": "EC2 compute console.",
+      "icon": 3,
+      "color": "#FF9900",
+      "totp": true,
+      "favorite": true,
+      "shared": true
+    },
+    {
+      "name": "AWS S3",
+      "username": "Jean Bartik",
+      "uri": "https://aws.amazon.com/s3/",
+      "folder": "Clients/Gibson/Servers",
+      "description": "S3 object storage console.",
+      "icon": 47,
+      "color": "#569A31",
+      "totp": true,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "HubSpot",
+      "username": "ada@passbolt.com",
+      "uri": "https://www.hubspot.com/",
+      "folder": "Marketing",
+      "description": "Marketing CRM and email.",
+      "icon": 25,
+      "color": "#FF7A59",
+      "totp": true,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "MongoDB",
+      "username": "Betty Holberton",
+      "uri": "https://www.mongodb.com/",
+      "folder": "Clients/Gibson/Databases",
+      "description": "MongoDB document store.",
+      "icon": 27,
+      "color": "#47A248",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "GCP",
+      "username": "betty@passbolt.com",
+      "uri": "https://cloud.google.com/",
+      "folder": "Clients/Gibson/Servers",
+      "description": "Google Cloud project console.",
+      "icon": 8,
+      "color": "#4285F4",
+      "totp": true,
+      "favorite": true,
+      "shared": true
+    },
+    {
+      "name": "Zoho CRM",
+      "username": "betty@passbolt.com",
+      "uri": "https://www.zoho.com/",
+      "folder": "Sales",
+      "description": "Sales CRM.",
+      "icon": 9,
+      "color": "#E42527",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Odoo",
+      "username": "betty@passbolt.com",
+      "uri": "https://www.odoo.com/",
+      "folder": "Admin",
+      "description": "ERP / back-office.",
+      "icon": 6,
+      "color": "#714B67",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "StoryBooks",
+      "username": "hedy@passbolt.com",
+      "uri": "https://storybook.js.org/",
+      "folder": "Product Management",
+      "description": "Component library and UI docs.",
+      "icon": 56,
+      "color": "#FF4785",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "DynamoDB",
+      "username": "Ada Lovelace",
+      "uri": "https://aws.amazon.com/dynamodb/",
+      "folder": "Clients/Da Vinci/Databases",
+      "description": "DynamoDB tables (Da Vinci account).",
+      "icon": 27,
+      "color": "#4053D6",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Strapi",
+      "username": "Ada Lovelace",
+      "uri": "https://strapi.io/",
+      "folder": "Product Management",
+      "description": "Headless CMS.",
+      "icon": 6,
+      "color": "#4945FF",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "RocketChat",
+      "username": "Ada Lovelace",
+      "uri": "https://rocket.chat/",
+      "folder": "Admin",
+      "description": "Team chat.",
+      "icon": 5,
+      "color": "#F5455C",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Supabase",
+      "username": "Ada Lovelace",
+      "uri": "https://supabase.com/",
+      "folder": "Clients/Gibson/API",
+      "description": "Postgres + auth backend.",
+      "icon": 27,
+      "color": "#3ECF8E",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Pulumi",
+      "username": "ada@passbolt.com",
+      "uri": "https://www.pulumi.com/",
+      "folder": "Clients/Gibson/DevOps",
+      "description": "Infrastructure as code.",
+      "icon": 6,
+      "color": "#8A3391",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Heroku",
+      "username": "jean@passbolt.com",
+      "uri": "https://www.heroku.com/",
+      "folder": "Clients/Gibson/DevOps",
+      "description": "App hosting (legacy).",
+      "icon": 8,
+      "color": "#430098",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Azure",
+      "username": "ada@passbolt.com",
+      "uri": "https://azure.microsoft.com/",
+      "folder": "Clients/Gibson/DevOps",
+      "description": "Azure cloud console.",
+      "icon": 8,
+      "color": "#0078D4",
+      "totp": true,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Wordpress - blog",
+      "username": "ada@passbolt.com",
+      "uri": "https://wordpress.com/",
+      "folder": "Marketing",
+      "description": "Company blog admin.",
+      "icon": 65,
+      "color": "#21759B",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Medium",
+      "username": "Irene Greif",
+      "uri": "https://medium.com/",
+      "folder": "Clients/Gibson/Social medias",
+      "description": "Long-form articles.",
+      "icon": 56,
+      "color": "#12100E",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Google Analytics",
+      "username": "ada@passbolt.com",
+      "uri": "https://analytics.google.com/",
+      "folder": "Admin",
+      "description": "Web analytics.",
+      "icon": 57,
+      "color": "#E37400",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Matomo",
+      "username": "Ada Lovelace",
+      "uri": "https://matomo.org/",
+      "folder": "Admin",
+      "description": "Self-hosted analytics.",
+      "icon": 57,
+      "color": "#3152A0",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "CookieBot",
+      "username": "ada@passbolt.com",
+      "uri": "https://www.cookiebot.com/",
+      "folder": "Clients/Gibson/Others",
+      "description": "Consent management.",
+      "icon": 46,
+      "color": "#1A73E8",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "SecureFrame",
+      "username": "Hedy Lamarr",
+      "uri": "https://secureframe.com/",
+      "folder": "Admin",
+      "description": "SOC 2 / compliance automation.",
+      "icon": 52,
+      "color": "#2B59FF",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Google Webstore",
+      "username": "hedy@passbolt.com",
+      "uri": "https://chrome.google.com/",
+      "folder": "Admin",
+      "description": "Chrome Web Store developer console.",
+      "icon": 32,
+      "color": "#4285F4",
+      "totp": true,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Docker hub",
+      "username": "ada@passbolt.com",
+      "uri": "https://hub.docker.com/",
+      "folder": "Clients/Gibson/Others",
+      "description": "Container image registry.",
+      "icon": 8,
+      "color": "#2496ED",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Front server",
+      "username": "jean@passbolt.com",
+      "uri": "",
+      "folder": "Clients/Gibson/Servers",
+      "description": "Front-end web server (prod).",
+      "icon": 3,
+      "color": "#607D8B",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Grafana",
+      "username": "Jean Bartik",
+      "uri": "https://grafana.com/",
+      "folder": "Clients/Gibson/DevOps",
+      "description": "Dashboards and observability.",
+      "icon": 57,
+      "color": "#F46800",
+      "totp": false,
+      "favorite": true,
+      "shared": true
+    },
+    {
+      "name": "Zabbix",
+      "username": "ada@passbolt.com",
+      "uri": "https://www.zabbix.com/",
+      "folder": "Clients/Gibson/DevOps",
+      "description": "Infrastructure monitoring.",
+      "icon": 57,
+      "color": "#D40000",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Redis",
+      "username": "Betty Holberton",
+      "uri": "https://redis.io/",
+      "folder": "Clients/Gibson/Databases",
+      "description": "Cache / queue.",
+      "icon": 27,
+      "color": "#DC382D",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Azure SQL DB",
+      "username": "betty@passbolt.com",
+      "uri": "https://azure.microsoft.com/",
+      "folder": "Clients/Gibson/Databases",
+      "description": "Managed SQL database.",
+      "icon": 27,
+      "color": "#0078D4",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "MySQL Slave 1",
+      "username": "betty@passbolt.com",
+      "uri": "https://www.toptal.com/",
+      "folder": "Clients/Gibson/Databases",
+      "description": "MySQL read replica 1.",
+      "icon": 27,
+      "color": "#00758F",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "MySQL Slave 2",
+      "username": "betty@passbolt.com",
+      "uri": "",
+      "folder": "Clients/Gibson/Databases",
+      "description": "MySQL read replica 2.",
+      "icon": 27,
+      "color": "#00758F",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "n8n",
+      "username": "ada@passbolt.com",
+      "uri": "https://n8n.io/",
+      "folder": "Clients/Gibson/DevOps",
+      "description": "Workflow automation.",
+      "icon": 6,
+      "color": "#EA4B71",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Supabase",
+      "username": "Ada Lovelace",
+      "uri": "https://supabase.com/",
+      "folder": "Clients/Gibson/API",
+      "description": "Postgres + auth backend.",
+      "icon": 27,
+      "color": "#3ECF8E",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    },
+    {
+      "name": "Newrelic",
+      "username": "ada@passbolt.com",
+      "uri": "https://newrelic.com/",
+      "folder": "Clients/Gibson/DevOps",
+      "description": "APM and monitoring.",
+      "icon": 57,
+      "color": "#1CE783",
+      "totp": false,
+      "favorite": false,
+      "shared": true
+    }
+  ]
+}

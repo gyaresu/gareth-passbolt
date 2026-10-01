@@ -1,0 +1,86 @@
+# Demo data seeder
+
+Populates the running stack with a tidy, good-looking vault for screenshots and
+videos: folders, logins, TOTPs, favourites, and per-resource icons and
+background colours. One command, no hand entry.
+
+It talks to the Passbolt API exactly as the apps do. It logs in as a user with
+their private key, encrypts every secret and the v5 metadata (which is where the
+icon and colour live) on the client, and creates resources through the public
+API. Nothing is written to the database directly, so it stays correct across
+schema changes.
+
+## Prerequisites
+
+1. The stack is up (`./scripts/setup.sh`) and the demo users exist. Keys are read
+   from `keys/gpg/<email>.key`, passphrase is the email.
+2. **Encrypted metadata (v5) is enabled** on the instance. Icons and colours are
+   v5 metadata, and the seeder creates v5 resources. Turn it on once as admin
+   under Administration > Encrypted metadata (this also creates the metadata
+   key). Without it the run stops with a "v5 creation disabled" error.
+
+## Run it
+
+```bash
+docker compose --profile seed run --rm seeder
+```
+
+The `seed` profile keeps this out of the normal `docker compose up`. The service
+builds a small Go binary, joins the stack network (so it reaches
+`passbolt.local`), mounts the user keys and the CA cert read-only, runs once, and
+exits. Re-running creates a second copy of everything, so run it on a fresh
+instance.
+
+## What it creates
+
+- The folder tree from `data.json` (Clients/Gibson/..., Admin, Marketing, etc.).
+- Every entry with its username, URL, description, icon and colour; a TOTP where
+  flagged; favourites where flagged.
+- Everything is owned by the `owner` in `data.json` (Ada, the admin). Items
+  outside `Personal` are shared with the `shareGroups` (developers, demoteam) so
+  the demo shows real shared vaults. `Personal` stays private.
+
+## Change what gets created
+
+Edit `data.json`. It is the source of truth and needs no build step of its own
+(the Dockerfile embeds it):
+
+```json
+{
+  "name": "Gitlab",
+  "username": "ada@passbolt.com",
+  "uri": "https://about.gitlab.com/",
+  "folder": "Clients/Gibson/DevOps",
+  "description": "CI/CD and source hosting for the Gibson account.",
+  "icon": 30,
+  "color": "#FC6D26",
+  "totp": true,
+  "favorite": true,
+  "shared": true
+}
+```
+
+- `icon` is a KeePass glyph index, 0 to 68. The list renderer draws the KeePass
+  glyph on a tile coloured by `color`. Pick the index that suits; the colour is
+  what makes the vault read well on screen.
+- `color` is `#RRGGBB`.
+- `username` is just the text shown on the entry (the login for that service). It
+  does not have to be a real Passbolt user.
+
+## Configuration
+
+All have defaults suited to this stack; override with environment variables:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `PASSBOLT_URL` | `https://passbolt.local` | Instance base URL |
+| `KEYS_DIR` | `/keys` | Directory of `<email>.key` files (mounted from `keys/gpg`) |
+| `CA_CERT` | `/ca/ca.crt` | PEM CA to trust (mounted from `keys/ca.crt`) |
+| `PASSPHRASE` | the owner's email | Owner key passphrase |
+
+## Notes
+
+- Passwords and TOTP seeds are generated at run time and are throwaway. Nothing
+  here is a real secret.
+- Tags are not created (not yet in the Go SDK). Everything else on the entry is.
+- Timestamps are set by the server at creation, so entries show fresh dates.

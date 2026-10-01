@@ -337,6 +337,28 @@ services:
     networks:
       default:
 
+  # Demo-data seeder (optional). Populates the instance with folders, logins,
+  # TOTPs, favourites and coloured icons for screenshots and videos.
+  # Run after the stack is up and the users exist:
+  #   docker compose --profile seed run --rm seeder
+  # Edit scripts/seed/data.json to change what gets created.
+  seeder:
+    profiles: ["seed"]
+    build: ./scripts/seed
+    container_name: seeder
+    depends_on:
+      - passbolt
+      - traefik
+    environment:
+      PASSBOLT_URL: https://passbolt.local
+      KEYS_DIR: /keys
+      CA_CERT: /ca/ca.crt
+    volumes:
+      - ./keys/gpg:/keys:ro
+      - ./keys/ca.crt:/ca/ca.crt:ro
+    networks:
+      default:
+
 volumes:
   database_volume:
     name: ${COMPOSE_PROJECT_NAME}_database_volume

@@ -71,6 +71,15 @@ docker compose exec passbolt su -s /bin/bash -c "/usr/share/php/passbolt/bin/cak
 ./scripts/tests/scripts/test-scripts.sh     # Script validation
 ```
 
+### Demo Data
+
+```bash
+# Populate the instance with folders, logins, TOTPs, favourites and coloured
+# icons for screenshots/videos. Run after the stack is up and users exist.
+# Requires encrypted metadata (v5) enabled in Administration. See scripts/seed/README.md.
+docker compose --profile seed run --rm seeder
+```
+
 ### Certificate Management
 
 ```bash
