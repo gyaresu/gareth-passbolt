@@ -9,4 +9,4 @@ RUN CGO_ENABLED=0 go build -trimpath -o /seed .
 
 FROM alpine:3.20
 COPY --from=build /seed /usr/local/bin/seed
-ENTRYPOINT ["/seed"]
+ENTRYPOINT ["/usr/local/bin/seed"]
