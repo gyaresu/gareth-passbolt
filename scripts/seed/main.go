@@ -116,6 +116,11 @@ func run() error {
 	defer client.Logout(ctx)
 	fmt.Printf("Logged in as %s at %s\n", data.Owner, baseURL)
 
+	// Clean-only: delete the data and stop, without seeding. No v5 needed to delete.
+	if wantClean() {
+		return resetAll(ctx, client)
+	}
+
 	// Fail before creating anything if v5 is off: icons/colours are v5 metadata
 	// and the resources are v5, so without it nothing useful would be created.
 	if !client.MetadataTypeSettings().AllowCreationOfV5Resources {
@@ -212,6 +217,21 @@ func wantReset() bool {
 	}
 	for _, a := range os.Args[1:] {
 		if a == "--reset" || a == "reset" {
+			return true
+		}
+	}
+	return false
+}
+
+// wantClean reports whether a delete-only run was requested, via CLEAN=1 (env)
+// or a --clean argument. Unlike reset, this removes the data and stops.
+func wantClean() bool {
+	switch os.Getenv("CLEAN") {
+	case "1", "true", "yes":
+		return true
+	}
+	for _, a := range os.Args[1:] {
+		if a == "--clean" || a == "clean" {
 			return true
 		}
 	}

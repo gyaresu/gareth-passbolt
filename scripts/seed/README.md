@@ -42,6 +42,15 @@ Users, groups and keys are left untouched, so you do not have to re-instantiate
 accounts. It clears the whole vault, not just previously seeded items, so only
 use it on an instance whose contents are disposable.
 
+To remove the data **without** seeding again, use `CLEAN=1`:
+
+```bash
+docker compose --profile seed run --rm -e CLEAN=1 seeder
+```
+
+Same deletion as `RESET=1` (all resources and folders, users left alone), but it
+stops there instead of re-seeding.
+
 ## What it creates
 
 - The folder tree from `data.json` (Clients/Gibson/..., Admin, Marketing, etc.).
@@ -89,6 +98,7 @@ All have defaults suited to this stack; override with environment variables:
 | `CA_CERT` | `/ca/ca.crt` | PEM CA to trust (mounted from `keys/ca.crt`) |
 | `PASSPHRASE` | the owner's email | Owner key passphrase |
 | `RESET` | unset | Set to `1` to delete all resources/folders before seeding |
+| `CLEAN` | unset | Set to `1` to delete all resources/folders and stop (no seeding) |
 
 ## Notes
 

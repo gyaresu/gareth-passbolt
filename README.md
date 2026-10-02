@@ -941,6 +941,12 @@ log each user in again):
 docker compose --profile seed run --rm -e RESET=1 seeder
 ```
 
+To remove the demo data without re-seeding (same deletion, but it stops there):
+
+```bash
+docker compose --profile seed run --rm -e CLEAN=1 seeder
+```
+
 It signs in as the admin with their key, encrypts each secret on the client, and
 creates the data through the normal passbolt API, the same way the apps do. The
 icons and colours are stored as encrypted v5 metadata.

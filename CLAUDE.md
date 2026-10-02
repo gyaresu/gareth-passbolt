@@ -81,6 +81,9 @@ docker compose --profile seed run --rm seeder
 
 # Re-seed cleanly: delete all resources/folders first, then seed (keeps users).
 docker compose --profile seed run --rm -e RESET=1 seeder
+
+# Delete all resources/folders without re-seeding (keeps users).
+docker compose --profile seed run --rm -e CLEAN=1 seeder
 ```
 
 ### Certificate Management

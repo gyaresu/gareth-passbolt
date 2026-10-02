@@ -343,6 +343,8 @@ services:
   #   docker compose --profile seed run --rm seeder
   # Re-seed cleanly (deletes all resources/folders first, keeps users):
   #   docker compose --profile seed run --rm -e RESET=1 seeder
+  # Delete all resources/folders without re-seeding (keeps users):
+  #   docker compose --profile seed run --rm -e CLEAN=1 seeder
   # Edit scripts/seed/data.json to change what gets created.
   seeder:
     profiles: ["seed"]
