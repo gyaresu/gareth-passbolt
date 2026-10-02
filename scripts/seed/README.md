@@ -28,8 +28,19 @@ docker compose --profile seed run --rm seeder
 The `seed` profile keeps this out of the normal `docker compose up`. The service
 builds a small Go binary, joins the stack network (so it reaches
 `passbolt.local`), mounts the user keys and the CA cert read-only, runs once, and
-exits. Re-running creates a second copy of everything, so run it on a fresh
-instance.
+exits.
+
+Seeding only ever adds, so running twice creates a second copy. To lay the data
+down fresh, reset first:
+
+```bash
+docker compose --profile seed run --rm -e RESET=1 seeder
+```
+
+`RESET=1` deletes every resource and folder the admin can remove, then seeds.
+Users, groups and keys are left untouched, so you do not have to re-instantiate
+accounts. It clears the whole vault, not just previously seeded items, so only
+use it on an instance whose contents are disposable.
 
 ## What it creates
 
@@ -77,6 +88,7 @@ All have defaults suited to this stack; override with environment variables:
 | `KEYS_DIR` | `/keys` | Directory of `<email>.key` files (mounted from `keys/gpg`) |
 | `CA_CERT` | `/ca/ca.crt` | PEM CA to trust (mounted from `keys/ca.crt`) |
 | `PASSPHRASE` | the owner's email | Owner key passphrase |
+| `RESET` | unset | Set to `1` to delete all resources/folders before seeding |
 
 ## Notes
 
@@ -84,3 +96,5 @@ All have defaults suited to this stack; override with environment variables:
   here is a real secret.
 - Tags are not created (not yet in the Go SDK). Everything else on the entry is.
 - Timestamps are set by the server at creation, so entries show fresh dates.
+- To re-seed cleanly, use `RESET=1` (above) rather than wiping the stack, which
+  would destroy the user accounts and force a manual per-user re-login.

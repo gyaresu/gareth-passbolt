@@ -122,6 +122,12 @@ func run() error {
 		return fmt.Errorf("v5 resource creation is disabled on this instance; enable encrypted metadata in Administration first")
 	}
 
+	if wantReset() {
+		if err := resetAll(ctx, client); err != nil {
+			return err
+		}
+	}
+
 	groupIDs, err := resolveGroups(ctx, client, data.ShareGroups)
 	if err != nil {
 		return err
@@ -194,6 +200,60 @@ func run() error {
 	}
 
 	fmt.Printf("Done: %d resources (%d favourites, %d shared to groups)\n", created, favourited, shared)
+	return nil
+}
+
+// wantReset reports whether a clean-out was requested, via RESET=1 (env, handy
+// for the compose service) or a --reset argument (handy for the binary).
+func wantReset() bool {
+	switch os.Getenv("RESET") {
+	case "1", "true", "yes":
+		return true
+	}
+	for _, a := range os.Args[1:] {
+		if a == "--reset" || a == "reset" {
+			return true
+		}
+	}
+	return false
+}
+
+// resetAll deletes every resource and folder the logged-in admin can remove, so
+// the dummy data can be laid down fresh. Users, groups and keys are untouched.
+// Deleting a folder orphans any survivors up to its parent rather than cascading,
+// so order does not matter: each folder is removed as it is reached.
+func resetAll(ctx context.Context, client *api.Client) error {
+	resources, err := client.GetResources(ctx, &api.GetResourcesOptions{})
+	if err != nil {
+		return fmt.Errorf("listing resources: %w", err)
+	}
+	delR, skipR := 0, 0
+	for _, r := range resources {
+		if err := client.DeleteResource(ctx, r.ID); err != nil {
+			skipR++ // e.g. a resource the admin does not own; leave it be
+			continue
+		}
+		delR++
+	}
+
+	folders, err := client.GetFolders(ctx, &api.GetFoldersOptions{})
+	if err != nil {
+		return fmt.Errorf("listing folders: %w", err)
+	}
+	delF, skipF := 0, 0
+	for _, f := range folders {
+		if err := client.DeleteFolder(ctx, f.ID); err != nil {
+			skipF++
+			continue
+		}
+		delF++
+	}
+
+	fmt.Printf("Reset: removed %d resources, %d folders", delR, delF)
+	if skipR+skipF > 0 {
+		fmt.Printf(" (left %d resources, %d folders the admin could not delete)", skipR, skipF)
+	}
+	fmt.Println()
 	return nil
 }
 
