@@ -38,6 +38,7 @@ same version.
 - [SMTP Configuration](#smtp-configuration)
 - [GPG Primer](#gpg-primer)
 - [User and Group Management](#user-and-group-management)
+- [Demo Data](#demo-data)
 - [Testing and Verification](#testing-and-verification)
   - [SCIM API Testing with Bruno](#scim-api-testing-with-bruno)
 - [Troubleshooting](#troubleshooting)
@@ -919,6 +920,35 @@ Before testing user removal, ensure Passbolt is configured to suspend users rath
 # Run manual sync in Passbolt to reactivate the user
 ```
 
+## Demo Data
+
+Fill the instance with a ready-made set of folders, logins, TOTPs, favourites and
+coloured icons, so it looks good for screenshots and videos without entering
+anything by hand.
+
+With the stack up and **encrypted metadata (v5) enabled** in Administration
+(Administration > Encrypted metadata), run:
+
+```bash
+docker compose --profile seed run --rm seeder
+```
+
+To lay the data down fresh, delete everything first and re-seed (this removes all
+resources and folders but leaves the user accounts alone, so you do not have to
+log each user in again):
+
+```bash
+docker compose --profile seed run --rm -e RESET=1 seeder
+```
+
+It signs in as the admin with their key, encrypts each secret on the client, and
+creates the data through the normal passbolt API, the same way the apps do. The
+icons and colours are stored as encrypted v5 metadata.
+
+Change what gets created by editing `scripts/seed/data.json`. Full details,
+including the icon and colour fields, are in
+[`scripts/seed/README.md`](scripts/seed/README.md).
+
 ## Testing and Verification
 
 ### LDAPS Connectivity Test
@@ -1371,6 +1401,7 @@ docker compose exec ldap1 ldapsearch -x -H ldap://localhost:389 \
 
 Key directories:
 - `scripts/` - Setup and management scripts (setup, cert/GPG generation, LDAP seeding, tests)
+- `scripts/seed/` - Demo data seeder (populates the instance with dummy vault data)
 - `config/` - Configuration files (traefik, ldap-meta, nginx, PHP, database, rsyslog)
 - `keys/` - TLS certificates and GPG keys (generated on setup)
 - `certs/` - LDAPS certificate bundles for the meta backend
