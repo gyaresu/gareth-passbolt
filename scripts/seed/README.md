@@ -51,19 +51,46 @@ docker compose --profile seed run --rm -e CLEAN=1 seeder
 Same deletion as `RESET=1` (all resources and folders, users left alone), but it
 stops there instead of re-seeding.
 
+## Data sets
+
+The data lives in `datasets/`, one JSON file per set. `DATASET` picks which to seed
+(default `software`):
+
+```bash
+docker compose --profile seed run --rm -e RESET=1 -e DATASET=secops seeder
+```
+
+Built-in sets:
+
+- `software` - cloud consoles, CI/CD, databases (the default).
+- `secops` - SIEM, EDR, firewall, PAM, AppSec, incident-response runbooks.
+- `healthcare` - EHR, PACS, pharmacy, lab, billing, by department.
+
+To seed a set you generated outside the repo, mount it and point `DATASET_FILE` at
+it (this takes precedence over `DATASET`):
+
+```bash
+docker compose --profile seed run --rm \
+  -v /path/to/myset.json:/data/set.json:ro -e DATASET_FILE=/data/set.json seeder
+```
+
+A set that doesn't exist prints the available names.
+
 ## What it creates
 
-- The folder tree from `data.json` (Clients/Gibson/..., Admin, Marketing, etc.).
+- The folder tree from the selected set (for `software`: Clients/Gibson/..., Admin,
+  Marketing, etc.).
 - Every entry with its username, URL, description, icon and colour; a TOTP where
   flagged; favourites where flagged.
-- Everything is owned by the `owner` in `data.json` (Ada, the admin). Items
-  outside `Personal` are shared with the `shareGroups` (developers, demoteam) so
-  the demo shows real shared vaults. `Personal` stays private.
+- Everything is owned by the set's `owner` (Ada, the admin). Items outside the
+  private folders are shared with the `shareGroups` so the demo shows real shared
+  vaults.
 
 ## Change what gets created
 
-Edit `data.json`. It is the source of truth and needs no build step of its own
-(the Dockerfile embeds it):
+Edit the set under `datasets/` (e.g. `datasets/software.json`). Each file is the
+source of truth for its set and needs no build step of its own (the Dockerfile
+embeds the whole `datasets/` directory):
 
 ```json
 {
@@ -109,6 +136,8 @@ All have defaults suited to this stack; override with environment variables:
 
 | Variable | Default | Meaning |
 |---|---|---|
+| `DATASET` | `software` | Which embedded set under `datasets/` to seed |
+| `DATASET_FILE` | unset | Path to an external set file to seed (overrides `DATASET`) |
 | `PASSBOLT_URL` | `https://passbolt.local` | Instance base URL |
 | `KEYS_DIR` | `/keys` | Directory of `<email>.key` files (mounted from `keys/gpg`) |
 | `CA_CERT` | `/ca/ca.crt` | PEM CA to trust (mounted from `keys/ca.crt`) |

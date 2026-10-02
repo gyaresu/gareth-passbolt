@@ -345,7 +345,9 @@ services:
   #   docker compose --profile seed run --rm -e RESET=1 seeder
   # Delete all resources/folders without re-seeding (keeps users):
   #   docker compose --profile seed run --rm -e CLEAN=1 seeder
-  # Edit scripts/seed/data.json to change what gets created.
+  # Pick an industry data set (default software; also secops, healthcare):
+  #   docker compose --profile seed run --rm -e RESET=1 -e DATASET=secops seeder
+  # Edit the sets under scripts/seed/datasets/ to change what gets created.
   seeder:
     profiles: ["seed"]
     build: ./scripts/seed

@@ -951,8 +951,15 @@ It signs in as the admin with their key, encrypts each secret on the client, and
 creates the data through the normal passbolt API, the same way the apps do. The
 icons and colours are stored as encrypted v5 metadata.
 
-Change what gets created by editing `scripts/seed/data.json`. Full details,
-including the icon and colour fields, are in
+Pick an industry data set with `DATASET` (default `software`; also `secops` and
+`healthcare`), handy for tailoring a customer demo:
+
+```bash
+docker compose --profile seed run --rm -e RESET=1 -e DATASET=secops seeder
+```
+
+Change what gets created by editing the sets under `scripts/seed/datasets/`. Full
+details, including the icon, colour and custom-field options, are in
 [`scripts/seed/README.md`](scripts/seed/README.md).
 
 ## Testing and Verification

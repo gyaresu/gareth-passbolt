@@ -1,0 +1,129 @@
+{
+  "owner": "ada@passbolt.com",
+  "shareGroups": ["developers", "demoteam"],
+  "folders": [
+    { "path": "Infrastructure", "shared": true },
+    { "path": "Endpoints", "shared": true },
+    { "path": "Network", "shared": true },
+    { "path": "Identity & Access", "shared": true },
+    { "path": "Monitoring", "shared": true },
+    { "path": "AppSec", "shared": true },
+    { "path": "Incident Response", "shared": true },
+    { "path": "Threat Intel", "shared": true },
+    { "path": "Personal", "shared": false }
+  ],
+  "resources": [
+    {
+      "name": "Splunk", "username": "soc@passbolt.com", "uri": "https://www.splunk.com/",
+      "folder": "Monitoring", "description": "SIEM and log analytics.",
+      "icon": 57, "color": "#65A637", "totp": true, "favorite": true, "shared": true
+    },
+    {
+      "name": "CrowdStrike Falcon", "username": "soc@passbolt.com", "uri": "https://falcon.crowdstrike.com/",
+      "folder": "Endpoints", "description": "Endpoint detection and response.",
+      "icon": 2, "color": "#FC0000", "totp": true, "favorite": true, "shared": true,
+      "customFields": [
+        { "name": "Tenant ID", "value": "cs-demo-1a2b3c4d" },
+        { "name": "CID", "value": "demo-customer-id" }
+      ]
+    },
+    {
+      "name": "Palo Alto NGFW", "username": "netsec@passbolt.com", "uri": "https://www.paloaltonetworks.com/",
+      "folder": "Network", "description": "Perimeter firewall management.",
+      "icon": 3, "color": "#FA582D", "totp": true, "favorite": false, "shared": true
+    },
+    {
+      "name": "VPN Gateway", "username": "netsec@passbolt.com", "uri": "https://openvpn.net/",
+      "folder": "Network", "description": "Remote access VPN admin.",
+      "icon": 8, "color": "#EA7E20", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "Cloudflare WAF", "username": "netsec@passbolt.com",
+      "uris": ["https://dash.cloudflare.com/", "https://api.cloudflare.com/"],
+      "folder": "Network", "description": "WAF, DNS and DDoS protection.",
+      "icon": 8, "color": "#F38020", "totp": true, "favorite": false, "shared": true,
+      "customFields": [
+        { "name": "Account ID", "value": "cf-demo-acct-id" },
+        { "name": "Zone", "value": "passbolt.example" }
+      ]
+    },
+    {
+      "name": "CyberArk PAM", "username": "iam@passbolt.com", "uri": "https://www.cyberark.com/",
+      "folder": "Identity & Access", "description": "Privileged access management.",
+      "icon": 0, "color": "#00A9E0", "totp": true, "favorite": false, "shared": true
+    },
+    {
+      "name": "Okta", "username": "iam@passbolt.com", "uri": "https://www.okta.com/",
+      "folder": "Identity & Access", "description": "Workforce SSO and MFA.",
+      "icon": 9, "color": "#007DC1", "totp": true, "favorite": true, "shared": true
+    },
+    {
+      "name": "HashiCorp Vault", "username": "platform@passbolt.com", "uri": "https://www.vaultproject.io/",
+      "folder": "Infrastructure", "description": "Secrets management root token (break-glass).",
+      "icon": 0, "color": "#FFD814", "totp": false, "favorite": false, "shared": true,
+      "shareUsers": ["betty@passbolt.com"]
+    },
+    {
+      "name": "Internal CA", "username": "platform@passbolt.com", "uri": "https://smallstep.com/",
+      "folder": "Infrastructure", "description": "Private certificate authority.",
+      "icon": 67, "color": "#4A5568", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "Wiz", "username": "cloudsec@passbolt.com", "uri": "https://www.wiz.io/",
+      "folder": "Infrastructure", "description": "Cloud security posture management.",
+      "icon": 8, "color": "#4C45E0", "totp": true, "favorite": false, "shared": true
+    },
+    {
+      "name": "Nessus", "username": "appsec@passbolt.com", "uri": "https://www.tenable.com/products/nessus",
+      "folder": "AppSec", "description": "Vulnerability scanning.",
+      "icon": 2, "color": "#00C176", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "Burp Suite Enterprise", "username": "appsec@passbolt.com", "uri": "https://portswigger.net/burp",
+      "folder": "AppSec", "description": "Web application security testing.",
+      "icon": 6, "color": "#FF6633", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "HackerOne", "username": "appsec@passbolt.com", "uri": "https://www.hackerone.com/",
+      "folder": "AppSec", "description": "Bug bounty programme management.",
+      "icon": 5, "color": "#494649", "totp": true, "favorite": false, "shared": true
+    },
+    {
+      "name": "KnowBe4", "username": "awareness@passbolt.com", "uri": "https://www.knowbe4.com/",
+      "folder": "AppSec", "description": "Phishing simulation and training.",
+      "icon": 25, "color": "#F36F21", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "Jamf Pro", "username": "endpoints@passbolt.com", "uri": "https://www.jamf.com/",
+      "folder": "Endpoints", "description": "Apple device management (MDM).",
+      "icon": 18, "color": "#00A3E0", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "VirusTotal", "username": "ti@passbolt.com", "uri": "https://www.virustotal.com/",
+      "folder": "Threat Intel", "description": "File and URL reputation.",
+      "icon": 1, "color": "#394EFF", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "PagerDuty", "username": "oncall@passbolt.com", "uri": "https://www.pagerduty.com/",
+      "folder": "Incident Response", "description": "On-call and incident alerting.",
+      "icon": 14, "color": "#06AC38", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "Break-glass procedure", "type": "v5-note",
+      "folder": "Incident Response",
+      "description": "Emergency access steps.\n1. Retrieve Vault root token from this vault.\n2. Notify the CISO and on-call lead.\n3. Rotate the token within 4 hours of use.\nThis is demo text, not a real procedure.",
+      "icon": 2, "color": "#D40000", "favorite": false, "shared": true
+    },
+    {
+      "name": "IR runbook: ransomware", "type": "v5-note",
+      "folder": "Incident Response",
+      "description": "Containment checklist.\n- Isolate affected hosts from the network.\n- Preserve disk images for forensics.\n- Engage legal and comms.\nDemo content only.",
+      "icon": 7, "color": "#607D8B", "favorite": false, "shared": true
+    },
+    {
+      "name": "SOC console MFA", "type": "v5-totp-standalone",
+      "folder": "Identity & Access",
+      "icon": 0, "color": "#00A9E0", "favorite": false, "shared": true
+    }
+  ]
+}

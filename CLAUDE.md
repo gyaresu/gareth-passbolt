@@ -84,6 +84,9 @@ docker compose --profile seed run --rm -e RESET=1 seeder
 
 # Delete all resources/folders without re-seeding (keeps users).
 docker compose --profile seed run --rm -e CLEAN=1 seeder
+
+# Pick an industry data set (default software; also secops, healthcare).
+docker compose --profile seed run --rm -e RESET=1 -e DATASET=secops seeder
 ```
 
 ### Certificate Management

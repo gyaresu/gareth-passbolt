@@ -1,0 +1,110 @@
+{
+  "owner": "ada@passbolt.com",
+  "shareGroups": ["demoteam"],
+  "folders": [
+    { "path": "Reception", "shared": true },
+    { "path": "Clinical", "shared": true },
+    { "path": "Pharmacy", "shared": true },
+    { "path": "Laboratory", "shared": true },
+    { "path": "Billing & Insurance", "shared": true },
+    { "path": "IT", "shared": true },
+    { "path": "Personal", "shared": false }
+  ],
+  "resources": [
+    {
+      "name": "Epic EHR", "username": "clinician@clinic.example", "uri": "https://www.epic.com/",
+      "folder": "Clinical", "description": "Electronic health record system.",
+      "icon": 10, "color": "#B71234", "totp": true, "favorite": true, "shared": true,
+      "customFields": [
+        { "name": "Facility ID", "value": "FAC-00421" },
+        { "name": "Environment", "value": "Production" }
+      ]
+    },
+    {
+      "name": "PACS Imaging", "username": "radiology@clinic.example", "uri": "https://www.sectra.com/",
+      "folder": "Clinical", "description": "Picture archiving for radiology.",
+      "icon": 55, "color": "#2B6CB0", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "Telehealth", "username": "clinician@clinic.example", "uri": "https://www.zoom.com/healthcare",
+      "folder": "Clinical", "description": "Video consultations.",
+      "icon": 18, "color": "#2D8CFF", "totp": true, "favorite": false, "shared": true
+    },
+    {
+      "name": "Medical device portal", "username": "biomed@clinic.example", "uri": "https://www.gehealthcare.com/",
+      "folder": "Clinical", "description": "Infusion pump and monitor fleet admin.",
+      "icon": 14, "color": "#3182CE", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "MyChart Patient Portal", "username": "reception@clinic.example", "uri": "https://www.mychart.com/",
+      "folder": "Reception", "description": "Patient-facing portal admin.",
+      "icon": 9, "color": "#1A7F5A", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "Scheduling", "username": "reception@clinic.example", "uri": "https://www.athenahealth.com/",
+      "folder": "Reception", "description": "Appointments and clinician rota.",
+      "icon": 39, "color": "#DD6B20", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "Surescripts e-Prescribing", "username": "pharmacist@clinic.example", "uri": "https://surescripts.com/",
+      "folder": "Pharmacy", "description": "Electronic prescriptions.",
+      "icon": 10, "color": "#0E7C61", "totp": true, "favorite": false, "shared": true,
+      "customFields": [
+        { "name": "DEA number", "value": "XD1234563" },
+        { "name": "NPI", "value": "1760854552" }
+      ]
+    },
+    {
+      "name": "Pharmacy inventory", "username": "pharmacist@clinic.example", "uri": "https://www.mckesson.com/",
+      "folder": "Pharmacy", "description": "Drug stock and ordering.",
+      "icon": 47, "color": "#2F855A", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "LIS (Lab system)", "username": "lab@clinic.example", "uri": "https://www.cerner.com/",
+      "folder": "Laboratory", "description": "Laboratory information system.",
+      "icon": 27, "color": "#6B46C1", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "Availity Claims", "username": "billing@clinic.example", "uri": "https://www.availity.com/",
+      "folder": "Billing & Insurance", "description": "Insurance eligibility and claims.",
+      "icon": 37, "color": "#005EB8", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "athenaCollector", "username": "billing@clinic.example", "uri": "https://www.athenahealth.com/",
+      "folder": "Billing & Insurance", "description": "Revenue cycle and billing.",
+      "icon": 66, "color": "#2CA01C", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "Microsoft 365", "username": "it@clinic.example", "uri": "https://admin.microsoft.com/",
+      "folder": "IT", "description": "Email, identity and admin centre.",
+      "icon": 19, "color": "#D83B01", "totp": true, "favorite": true, "shared": true
+    },
+    {
+      "name": "Backup & DR", "username": "it@clinic.example", "uri": "https://www.veeam.com/",
+      "folder": "IT", "description": "Backup console for clinical systems.",
+      "icon": 26, "color": "#00B336", "totp": false, "favorite": false, "shared": true
+    },
+    {
+      "name": "HR / Payroll", "username": "hr@clinic.example", "uri": "https://www.workday.com/",
+      "folder": "IT", "description": "Staff records and payroll.",
+      "icon": 9, "color": "#F38B00", "totp": false, "favorite": false, "shared": false
+    },
+    {
+      "name": "Emergency codes", "type": "v5-note",
+      "folder": "Clinical",
+      "description": "Facility emergency codes.\nCode Blue: medical emergency.\nCode Red: fire.\nCode Grey: security.\nDemo content, not a real policy.",
+      "icon": 2, "color": "#D40000", "favorite": true, "shared": true
+    },
+    {
+      "name": "On-call rota notes", "type": "v5-note",
+      "folder": "Reception",
+      "description": "Weeknight on-call contacts and escalation order. Demo content only.",
+      "icon": 7, "color": "#718096", "favorite": false, "shared": true
+    },
+    {
+      "name": "Clinic VPN token", "type": "v5-totp-standalone",
+      "folder": "IT",
+      "icon": 0, "color": "#2B6CB0", "favorite": false, "shared": true
+    }
+  ]
+}

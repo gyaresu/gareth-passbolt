@@ -23,7 +23,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	_ "embed"
+	"embed"
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
@@ -31,6 +31,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,8 +39,8 @@ import (
 	"github.com/passbolt/go-passbolt/helper"
 )
 
-//go:embed data.json
-var dataJSON []byte
+//go:embed datasets/*.json
+var datasetsFS embed.FS
 
 // permissionUpdate is Passbolt's "can update" permission level (1 read, 7 update, 15 owner).
 const permissionUpdate = 7
@@ -88,6 +89,46 @@ func env(key, def string) string {
 	return def
 }
 
+// loadDataset loads the set to seed: an external file if DATASET_FILE is set
+// (for a generated set mounted in), otherwise the embedded set named by DATASET
+// (default "software"). Returns the parsed data and a label for logging.
+func loadDataset() (seedData, string, error) {
+	var data seedData
+	if file := os.Getenv("DATASET_FILE"); file != "" {
+		b, err := os.ReadFile(file)
+		if err != nil {
+			return data, "", fmt.Errorf("reading DATASET_FILE %q: %w", file, err)
+		}
+		if err := json.Unmarshal(b, &data); err != nil {
+			return data, "", fmt.Errorf("parsing %q: %w", file, err)
+		}
+		return data, file, nil
+	}
+
+	name := env("DATASET", "software")
+	b, err := datasetsFS.ReadFile("datasets/" + name + ".json")
+	if err != nil {
+		return data, "", fmt.Errorf("unknown dataset %q; available: %s", name, strings.Join(availableDatasets(), ", "))
+	}
+	if err := json.Unmarshal(b, &data); err != nil {
+		return data, "", fmt.Errorf("parsing dataset %q: %w", name, err)
+	}
+	return data, name, nil
+}
+
+// availableDatasets lists the embedded set names (filenames without .json).
+func availableDatasets() []string {
+	entries, err := datasetsFS.ReadDir("datasets")
+	if err != nil {
+		return nil
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		names = append(names, strings.TrimSuffix(e.Name(), ".json"))
+	}
+	return names
+}
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "seed: %v\n", err)
@@ -96,10 +137,11 @@ func main() {
 }
 
 func run() error {
-	var data seedData
-	if err := json.Unmarshal(dataJSON, &data); err != nil {
-		return fmt.Errorf("parsing data.json: %w", err)
+	data, setName, err := loadDataset()
+	if err != nil {
+		return err
 	}
+	fmt.Printf("Dataset: %s\n", setName)
 
 	baseURL := env("PASSBOLT_URL", "https://passbolt.local")
 	keysDir := env("KEYS_DIR", "/keys")
