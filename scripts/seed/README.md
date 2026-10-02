@@ -80,12 +80,28 @@ Edit `data.json`. It is the source of truth and needs no build step of its own
 }
 ```
 
-- `icon` is a KeePass glyph index, 0 to 68. The list renderer draws the KeePass
-  glyph on a tile coloured by `color`. Pick the index that suits; the colour is
-  what makes the vault read well on screen.
+- `icon` is a KeePass glyph index, 0 to 68. passbolt shows that glyph on a tile in
+  the colour you set. Pick whichever glyph fits; the colour is what makes the vault
+  look good on screen.
 - `color` is `#RRGGBB`.
 - `username` is just the text shown on the entry (the login for that service). It
   does not have to be a real Passbolt user.
+
+Optional fields for richer entries:
+
+- `type` - the resource type. Omit for a normal login (`v5-default`, or
+  `v5-default-with-totp` when `totp` is set). Also accepts `v5-note` (a secure note,
+  with its body in `description`) and `v5-totp-standalone` (a TOTP on its own).
+- `uris` - an array of URLs, for entries with more than one. Takes precedence over
+  the single `uri`.
+- `totp` - `true` adds a demo TOTP.
+- `favorite` - `true` stars it (for the owner).
+- `shared` - `true` shares it with the groups in `shareGroups`.
+- `shareUsers` - an array of user emails to share the entry with directly, on top of
+  any group share.
+- `customFields` - an array of `{ "name", "value", "type" }`. `type` is one of
+  `text` (default), `password`, `uri`, `number`, `boolean`; the value is stored
+  encrypted.
 
 ## Configuration
 

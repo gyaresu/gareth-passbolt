@@ -606,6 +606,43 @@
       "totp": false,
       "favorite": false,
       "shared": true
+    },
+    {
+      "name": "Cloudflare",
+      "username": "ada@passbolt.com",
+      "uris": ["https://dash.cloudflare.com/", "https://api.cloudflare.com/"],
+      "folder": "Clients/Gibson/DevOps",
+      "description": "DNS, CDN and WAF for the Gibson sites.",
+      "icon": 8,
+      "color": "#F38020",
+      "totp": true,
+      "favorite": false,
+      "shared": true,
+      "shareUsers": ["betty@passbolt.com"],
+      "customFields": [
+        { "name": "Account ID", "value": "a1b2c3d4e5f6a7b8" },
+        { "name": "Zone", "value": "gibson.example" },
+        { "name": "API token", "value": "cf-demo-token-not-real", "type": "password" }
+      ]
+    },
+    {
+      "name": "Office WiFi",
+      "type": "v5-note",
+      "folder": "Personal",
+      "description": "SSID: Gibson-Guest\nPassphrase: demo-only-not-real\nVLAN: guest",
+      "icon": 12,
+      "color": "#9C27B0",
+      "favorite": false,
+      "shared": false
+    },
+    {
+      "name": "VPN token",
+      "type": "v5-totp-standalone",
+      "folder": "Clients/Gibson/Servers",
+      "icon": 0,
+      "color": "#607D8B",
+      "favorite": false,
+      "shared": true
     }
   ]
 }

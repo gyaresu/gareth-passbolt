@@ -33,6 +33,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/passbolt/go-passbolt/api"
 	"github.com/passbolt/go-passbolt/helper"
 )
@@ -48,17 +49,29 @@ type folderSpec struct {
 	Shared bool   `json:"shared"`
 }
 
+type customFieldSpec struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+	Type  string `json:"type"` // text (default), password, uri, number, boolean
+}
+
 type resourceSpec struct {
-	Name        string `json:"name"`
-	Username    string `json:"username"`
-	URI         string `json:"uri"`
-	Folder      string `json:"folder"`
-	Description string `json:"description"`
-	Icon        int    `json:"icon"`
-	Color       string `json:"color"`
-	Totp        bool   `json:"totp"`
-	Favorite    bool   `json:"favorite"`
-	Shared      bool   `json:"shared"`
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	URI      string `json:"uri"`  // single URI (back-compat)
+	URIs     []string `json:"uris"` // multiple URIs (takes precedence over uri)
+	Folder   string `json:"folder"`
+	// Type is the resource-type slug. Empty = v5-default, or v5-default-with-totp
+	// when totp is set. Also accepts v5-note, v5-totp-standalone, v5-password-string.
+	Type         string            `json:"type"`
+	Description  string            `json:"description"`
+	Icon         int               `json:"icon"`
+	Color        string            `json:"color"`
+	Totp         bool              `json:"totp"`
+	Favorite     bool              `json:"favorite"`
+	Shared       bool              `json:"shared"`
+	ShareUsers   []string          `json:"shareUsers"` // emails to share with directly
+	CustomFields []customFieldSpec `json:"customFields"`
 }
 
 type seedData struct {
@@ -137,6 +150,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	usersByEmail, err := resolveUsers(ctx, client)
+	if err != nil {
+		return err
+	}
 
 	// Create folders parents-first (data.json is ordered that way) and share
 	// the shared ones with the groups.
@@ -159,30 +176,7 @@ func run() error {
 
 	created, favourited, shared := 0, 0, 0
 	for _, r := range data.Resources {
-		slug := "v5-default"
-		secret := map[string]any{"password": generatePassword(20)}
-		if r.Totp {
-			slug = "v5-default-with-totp"
-			secret["totp"] = map[string]any{
-				"secret_key": generateTotpSecret(),
-				"period":     30,
-				"digits":     6,
-				"algorithm":  "SHA1",
-			}
-		}
-		metadata := map[string]any{
-			"name":        r.Name,
-			"username":    r.Username,
-			"description": r.Description, // routed into the encrypted secret by the SDK
-			"icon": map[string]any{
-				"type":             "keepass-icon-set",
-				"value":            r.Icon,
-				"background_color": r.Color,
-			},
-		}
-		if r.URI != "" {
-			metadata["uris"] = []string{r.URI}
-		}
+		slug, metadata, secret := buildResource(r)
 
 		id, err := helper.CreateResourceGeneric(ctx, client, slug, folderIDs[r.Folder], metadata, secret)
 		if err != nil {
@@ -196,16 +190,122 @@ func run() error {
 			}
 			favourited++
 		}
-		if r.Shared && len(groupIDs) > 0 {
-			if err := helper.ShareResourceWithUsersAndGroups(ctx, client, id, nil, groupIDs, permissionUpdate); err != nil {
+
+		// Share with the groups (when the entry is shared) and with any named users.
+		var shareGroupIDs []string
+		if r.Shared {
+			shareGroupIDs = groupIDs
+		}
+		var shareUserIDs []string
+		for _, email := range r.ShareUsers {
+			if uid, ok := usersByEmail[email]; ok {
+				shareUserIDs = append(shareUserIDs, uid)
+			} else {
+				fmt.Printf("warning: share user %q not found for %q\n", email, r.Name)
+			}
+		}
+		if len(shareGroupIDs) > 0 || len(shareUserIDs) > 0 {
+			if err := helper.ShareResourceWithUsersAndGroups(ctx, client, id, shareUserIDs, shareGroupIDs, permissionUpdate); err != nil {
 				return fmt.Errorf("sharing resource %q: %w", r.Name, err)
 			}
 			shared++
 		}
 	}
 
-	fmt.Printf("Done: %d resources (%d favourites, %d shared to groups)\n", created, favourited, shared)
+	fmt.Printf("Done: %d resources (%d favourites, %d shared)\n", created, favourited, shared)
 	return nil
+}
+
+// buildResource constructs the resource-type slug plus the metadata and secret
+// maps for one entry, shaped to that type's schema. Fields that a given type's
+// schema does not define are left out so metadata validation passes.
+func buildResource(r resourceSpec) (string, map[string]any, map[string]any) {
+	slug := r.Type
+	if slug == "" {
+		if r.Totp {
+			slug = "v5-default-with-totp"
+		} else {
+			slug = "v5-default"
+		}
+	}
+
+	metadata := map[string]any{
+		"name": r.Name,
+		"icon": map[string]any{
+			"type":             "keepass-icon-set",
+			"value":            r.Icon,
+			"background_color": r.Color,
+		},
+	}
+	secret := map[string]any{}
+
+	uris := r.URIs
+	if len(uris) == 0 && r.URI != "" {
+		uris = []string{r.URI}
+	}
+
+	switch slug {
+	case "v5-note":
+		// A secure note keeps its body in the (encrypted) secret, not metadata.
+		if r.Description != "" {
+			secret["description"] = r.Description
+		}
+	case "v5-totp-standalone":
+		secret["totp"] = totpSecret()
+	default: // v5-default, v5-default-with-totp
+		metadata["username"] = r.Username
+		if len(uris) > 0 {
+			metadata["uris"] = uris
+		}
+		if r.Description != "" {
+			metadata["description"] = r.Description // routed into the secret by the SDK
+		}
+		secret["password"] = generatePassword(20)
+		if slug == "v5-default-with-totp" || r.Totp {
+			secret["totp"] = totpSecret()
+		}
+	}
+
+	// Custom fields: the name lives in the metadata half, the value in the secret
+	// half, joined by a shared uuid (as the web extension does).
+	if len(r.CustomFields) > 0 {
+		var metaCF, secretCF []map[string]any
+		for _, cf := range r.CustomFields {
+			t := cf.Type
+			if t == "" {
+				t = "text"
+			}
+			id := uuid.NewString()
+			metaCF = append(metaCF, map[string]any{"id": id, "type": t, "metadata_key": cf.Name})
+			secretCF = append(secretCF, map[string]any{"id": id, "type": t, "secret_value": cf.Value})
+		}
+		metadata["custom_fields"] = metaCF
+		secret["custom_fields"] = secretCF
+	}
+
+	return slug, metadata, secret
+}
+
+func totpSecret() map[string]any {
+	return map[string]any{
+		"secret_key": generateTotpSecret(),
+		"period":     30,
+		"digits":     6,
+		"algorithm":  "SHA1",
+	}
+}
+
+// resolveUsers maps user email (username) to user ID, for direct resource shares.
+func resolveUsers(ctx context.Context, client *api.Client) (map[string]string, error) {
+	users, err := client.GetUsers(ctx, &api.GetUsersOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("listing users: %w", err)
+	}
+	m := make(map[string]string, len(users))
+	for _, u := range users {
+		m[u.Username] = u.ID
+	}
+	return m, nil
 }
 
 // wantReset reports whether a clean-out was requested, via RESET=1 (env, handy
