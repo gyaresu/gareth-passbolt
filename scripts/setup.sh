@@ -126,7 +126,16 @@ else
     echo "✓ SSL certificates already exist"
 fi
 
-# Ensure ldaps_bundle.crt exists (copy from pre-generated ldap-meta cert)
+# Generate the LDAP meta proxy certificate (baked into the ldap-meta image at build)
+if [ ! -f "certs/ldap-meta.crt" ] || [ ! -f "certs/ldap-meta.key" ]; then
+    echo "   Generating LDAP meta proxy certificate..."
+    ./scripts/generate-ldap-meta-cert.sh
+    echo "✓ LDAP meta certificate generated"
+else
+    echo "✓ LDAP meta certificate already exists"
+fi
+
+# Ensure ldaps_bundle.crt exists (copy from the ldap-meta cert)
 if [ ! -f "certs/ldaps_bundle.crt" ]; then
     echo "   Creating LDAPS certificate bundle..."
     cp certs/ldap-meta.crt certs/ldaps_bundle.crt

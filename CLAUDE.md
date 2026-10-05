@@ -92,7 +92,9 @@ docker compose --profile seed run --rm -e RESET=1 -e DATASET=secops seeder
 ### Certificate Management
 
 ```bash
-./scripts/generate-certificates.sh           # Generate all TLS certificates
+./scripts/generate-certificates.sh           # Generate all TLS certificates (keys/)
+./scripts/generate-ldap-meta-cert.sh         # Generate the LDAP meta proxy cert (certs/)
+./scripts/generate-smtp-certs.sh             # Generate the SMTP4Dev cert (smtp4dev/certs/)
 ./scripts/validate-traefik-config.sh         # Validate Traefik YAML config
 ```
 
@@ -173,18 +175,6 @@ LDAP1 (Passbolt Inc.) is seeded with five famous women in computing; GPG key pas
 tail -f logs/passbolt/action-logs.log         # Passbolt action logs
 grep "passbolt-audit" logs/passbolt/syslog.log  # Audit events via syslog (if ENABLE_RSYSLOG=true)
 ```
-
-## Bug Investigation Scripts
-
-The `scripts/tests/` directory contains SQL scripts and shell scripts for investigating specific Passbolt behaviors:
-
-- `diagnose-duplicate-users.sql` / `cleanup-duplicate-users.sql` - Duplicate user detection
-- `check-mfa-duo-config.sql` - MFA configuration diagnostics
-- `check-action-logs-secret-updates.sql` - Audit log analysis
-- `test-duplicate-user-bug.sh` - Reproduces duplicate user scenarios
-- `test-secret-update-resource-modified.sh` - Tests resource modification behavior
-
-Each has an accompanying README explaining the investigation context.
 
 ## Reaching this stack from Claude
 
