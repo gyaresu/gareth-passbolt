@@ -39,6 +39,7 @@ same version.
 - [GPG Primer](#gpg-primer)
 - [User and Group Management](#user-and-group-management)
 - [Demo Data](#demo-data)
+  - [Large vaults and sharing](#large-vaults-and-sharing)
 - [Testing and Verification](#testing-and-verification)
   - [SCIM API Testing with Bruno](#scim-api-testing-with-bruno)
 - [Troubleshooting](#troubleshooting)
@@ -961,6 +962,34 @@ docker compose --profile seed run --rm -e RESET=1 -e DATASET=secops seeder
 Change what gets created by editing the sets under `scripts/seed/datasets/`. Full
 details, including the icon, colour and custom-field options, are in
 [`scripts/seed/README.md`](scripts/seed/README.md).
+
+### Large vaults and sharing
+
+`DATASET=bulk` generates a big vault for testing at scale: cold-start login,
+client-side decrypt, list rendering. `COUNT` sets the size.
+
+```bash
+docker compose --profile seed run --rm --build \
+  -e RESET=1 -e DATASET=bulk -e COUNT=10000 seeder
+```
+
+Nothing is shared by default, because each share costs an extra API call and
+re-encrypts the secret to every recipient. Use `BULK_SHARE_PCT` to test as someone
+other than the owner:
+
+```bash
+# 20% of the vault shared with the developers and demoteam groups
+docker compose --profile seed run --rm --build \
+  -e RESET=1 -e DATASET=bulk -e COUNT=10000 -e BULK_SHARE_PCT=20 seeder
+```
+
+`BULK_SHARE_GROUPS` sets the groups, default `developers,demoteam`. Missing groups
+are skipped with a warning. Sharing halves throughput: 12,000 resources takes 2m43s
+unshared, 5m50s at 20% shared.
+
+Large vaults need more than the stock PHP memory limit, which
+`config/php/www.conf` raises. Pass `--build` after editing anything under
+`scripts/seed/`, or compose runs the previous binary.
 
 ## Testing and Verification
 
