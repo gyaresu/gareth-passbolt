@@ -30,6 +30,16 @@ builds a small Go binary, joins the stack network (so it reaches
 `passbolt.local`), mounts the user keys and the CA cert read-only, runs once, and
 exits.
 
+**After changing anything in this directory, pass `--build`.** The binary is
+compiled into the image, and `compose run` reuses the cached image, so without it
+your change is silently ignored and the previous binary runs:
+
+```bash
+docker compose --profile seed run --rm --build seeder
+```
+
+Editing a file under `datasets/` counts: those are embedded into the binary too.
+
 Seeding only ever adds, so running twice creates a second copy. To lay the data
 down fresh, reset first:
 
@@ -65,6 +75,95 @@ Built-in sets:
 - `software` - cloud consoles, CI/CD, databases (the default).
 - `secops` - SIEM, EDR, firewall, PAM, AppSec, incident-response runbooks.
 - `healthcare` - EHR, PACS, pharmacy, lab, billing, by department.
+- `bulk` - a generated set for performance work. Not a file; see below.
+
+### The `bulk` set
+
+`bulk` is generated in the binary rather than read from `datasets/`, because a vault
+big enough to measure is several megabytes of JSON and does not belong in the repo.
+It exists to make the stack slow on purpose, so large-vault behaviour can be
+reproduced and profiled locally: cold-start login time, the client-side decrypt and
+local-storage write, and list rendering. Those costs scale with resource count, and
+a 48-entry demo vault cannot show them.
+
+```bash
+docker compose --profile seed run --rm -e DATASET=bulk -e COUNT=10000 seeder
+```
+
+`COUNT` defaults to 10000 and is ignored by every other set. The content is uniform
+and dull on purpose: the point is the count and the size of the encrypted metadata,
+not the words. Entries are derived from their index, so a given `COUNT` always
+produces the same vault and two runs can be compared.
+
+**The folder tree** is 20 systems, each with 5 environments: 100 leaf folders plus
+the 20 parents, 120 in all. Resources fill the leaves evenly, so `COUNT=12000` puts
+120 in each. Environment varies fastest, so every leaf is reached within each run of
+100 and the spread stays even at any count.
+
+**A bulk vault needs more than the stock PHP memory limit.** `config/php/www.conf`
+raises it for this stack. On a default install the server cannot serve a
+10,000-resource index at all: it exhausts the 128M limit while serializing the
+response, and the browser extension retries forever showing no error.
+
+Nothing is starred or given a TOTP, and by default nothing is shared either. Every
+resource is a real API create with its secret and v5 metadata encrypted client side,
+so a five-figure run still takes minutes rather than seconds.
+
+`COUNT` is also how you cross the browser extension's page boundary: it requests
+10,000 resources per page, so `COUNT=10001` is the smallest vault that makes the
+extension fetch a second page.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `COUNT` | `10000` | How many resources to generate |
+| `BULK_OWNER` | `ada@passbolt.com` | Who owns the vault |
+| `BULK_SHARE_PCT` | `0` | Percentage of resources to share, 0 to 100 |
+| `BULK_SHARE_GROUPS` | `developers,demoteam` | Groups to share with, when sharing is on |
+| `TIMEOUT_MINUTES` | scaled to the set | Hard ceiling on the whole run |
+| `WORKERS` | 4 above 1000 resources, else 1 | How many resources to create in parallel |
+
+**How long it actually takes.** Two complete runs on a local stack, at the default
+four workers:
+
+| Run | Rate | Time |
+|---|---|---|
+| 12,000, unshared | 74/s | 2m43s |
+| 12,000, 20% shared | 34/s | 5m50s |
+
+Sharing roughly halves throughput, but on a 12,000 run that is three extra minutes,
+not hours.
+
+Two things got it there: four workers instead of one, and fetching the resource-type
+list once for the run rather than once per create (the SDK's create helper refetches
+it every time). Raise `WORKERS` to push harder; this stack's php-fpm allows 20
+children, so there is room, but the gain flattens once the server is the limit.
+
+Whether throughput holds as the vault grows is what the progress output, printed
+every 500 resources with a running rate, will tell you.
+
+**The deadline is a ceiling, not an estimate.** The run is killed if it overruns,
+because being killed partway leaves a half-populated vault. For the small
+hand-authored sets the ceiling is ten minutes; for a generated set it scales with
+resources and shares, and is set several times above measured throughput so that a
+slowdown does not cost you the run. `TIMEOUT_MINUTES` overrides it.
+
+### Sharing
+
+Off by default. A share re-encrypts the secret to every recipient's key and costs an
+extra API call, so it is the most expensive thing per resource, though on a 12,000
+run it adds minutes rather than hours. Missing groups are warned about and skipped.
+
+```bash
+# 20% of a 10k vault shared with the default groups
+docker compose --profile seed run --rm \
+  -e DATASET=bulk -e COUNT=10000 -e BULK_SHARE_PCT=20 seeder
+```
+
+Turn it on when the thing under test involves a user who is **not** the owner, or
+the server-side permission lookup. Leave it off when testing the owner's own
+cold-start login: with shared metadata keys the metadata is encrypted to the same
+key whether or not the resource is shared, and the logging-in user still gets one
+permission record per resource either way.
 
 To seed a set you generated outside the repo, mount it and point `DATASET_FILE` at
 it (this takes precedence over `DATASET`):

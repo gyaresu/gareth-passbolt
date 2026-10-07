@@ -57,11 +57,11 @@ type customFieldSpec struct {
 }
 
 type resourceSpec struct {
-	Name     string `json:"name"`
-	Username string `json:"username"`
-	URI      string `json:"uri"`  // single URI (back-compat)
+	Name     string   `json:"name"`
+	Username string   `json:"username"`
+	URI      string   `json:"uri"`  // single URI (back-compat)
 	URIs     []string `json:"uris"` // multiple URIs (takes precedence over uri)
-	Folder   string `json:"folder"`
+	Folder   string   `json:"folder"`
 	// Type is the resource-type slug. Empty = v5-default, or v5-default-with-totp
 	// when totp is set. Also accepts v5-note, v5-totp-standalone, v5-password-string.
 	Type         string            `json:"type"`
@@ -106,6 +106,11 @@ func loadDataset() (seedData, string, error) {
 	}
 
 	name := env("DATASET", "software")
+	if name == bulkDatasetName {
+		count := envInt("COUNT", 10000)
+		return generateBulk(count), fmt.Sprintf("%s (%d resources)", name, count), nil
+	}
+
 	b, err := datasetsFS.ReadFile("datasets/" + name + ".json")
 	if err != nil {
 		return data, "", fmt.Errorf("unknown dataset %q; available: %s", name, strings.Join(availableDatasets(), ", "))
@@ -116,17 +121,18 @@ func loadDataset() (seedData, string, error) {
 	return data, name, nil
 }
 
-// availableDatasets lists the embedded set names (filenames without .json).
+// availableDatasets lists the set names that DATASET accepts: the embedded files
+// (without .json), plus the generated "bulk" set, which has no file behind it.
 func availableDatasets() []string {
 	entries, err := datasetsFS.ReadDir("datasets")
 	if err != nil {
-		return nil
+		return []string{bulkDatasetName}
 	}
-	names := make([]string, 0, len(entries))
+	names := make([]string, 0, len(entries)+1)
 	for _, e := range entries {
 		names = append(names, strings.TrimSuffix(e.Name(), ".json"))
 	}
-	return names
+	return append(names, bulkDatasetName)
 }
 
 func main() {
@@ -158,8 +164,25 @@ func run() error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	deadline := runDeadline(data)
+	if len(data.Resources) > 1000 {
+		fmt.Printf("Large set: %d resources, allowing up to %s\n", len(data.Resources), deadline.Round(time.Minute))
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), deadline)
 	defer cancel()
+
+	// Workers each need their own client: the SDK client writes csrfToken without a
+	// lock, so one shared across goroutines is a data race.
+	newLoggedInClient := func(ctx context.Context) (*api.Client, error) {
+		c, err := api.NewClient(httpClient, "demo-seeder", baseURL, string(privKey), passphrase)
+		if err != nil {
+			return nil, fmt.Errorf("creating client: %w", err)
+		}
+		if err := c.Login(ctx); err != nil {
+			return nil, fmt.Errorf("login as %s: %w", data.Owner, err)
+		}
+		return c, nil
+	}
 
 	client, err := api.NewClient(httpClient, "demo-seeder", baseURL, string(privKey), passphrase)
 	if err != nil {
@@ -216,45 +239,34 @@ func run() error {
 	}
 	fmt.Printf("Created %d folders\n", len(data.Folders))
 
-	created, favourited, shared := 0, 0, 0
-	for _, r := range data.Resources {
-		slug, metadata, secret := buildResource(r)
-
-		id, err := helper.CreateResourceGeneric(ctx, client, slug, folderIDs[r.Folder], metadata, secret)
-		if err != nil {
-			return fmt.Errorf("creating resource %q: %w", r.Name, err)
-		}
-		created++
-
-		if r.Favorite {
-			if _, err := client.CreateFavorite(ctx, id); err != nil {
-				return fmt.Errorf("favouriting %q: %w", r.Name, err)
-			}
-			favourited++
-		}
-
-		// Share with the groups (when the entry is shared) and with any named users.
-		var shareGroupIDs []string
-		if r.Shared {
-			shareGroupIDs = groupIDs
-		}
-		var shareUserIDs []string
-		for _, email := range r.ShareUsers {
-			if uid, ok := usersByEmail[email]; ok {
-				shareUserIDs = append(shareUserIDs, uid)
-			} else {
-				fmt.Printf("warning: share user %q not found for %q\n", email, r.Name)
-			}
-		}
-		if len(shareGroupIDs) > 0 || len(shareUserIDs) > 0 {
-			if err := helper.ShareResourceWithUsersAndGroups(ctx, client, id, shareUserIDs, shareGroupIDs, permissionUpdate); err != nil {
-				return fmt.Errorf("sharing resource %q: %w", r.Name, err)
-			}
-			shared++
-		}
+	workers := workerCount(len(data.Resources))
+	if workers > 1 {
+		fmt.Printf("Creating %d resources across %d workers\n", len(data.Resources), workers)
 	}
 
-	fmt.Printf("Done: %d resources (%d favourites, %d shared)\n", created, favourited, shared)
+	started := time.Now()
+	total := len(data.Resources)
+	// Large sets run for a long time with nothing to show for it, so report
+	// progress and a running rate rather than appearing hung.
+	progress := func(done int) {
+		if done == 0 || done%500 != 0 {
+			return
+		}
+		elapsed := time.Since(started)
+		rate := float64(done) / elapsed.Seconds()
+		remaining := time.Duration(float64(total-done)/rate) * time.Second
+		fmt.Printf("  %d/%d resources (%.0f/s, about %s left)\n",
+			done, total, rate, remaining.Round(time.Second))
+	}
+
+	created, favourited, shared, err := seedResources(
+		ctx, data.Resources, newLoggedInClient, folderIDs, groupIDs, usersByEmail, workers, progress)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Done: %d resources (%d favourites, %d shared) in %s\n",
+		created, favourited, shared, time.Since(started).Round(time.Second))
 	return nil
 }
 
@@ -430,9 +442,15 @@ func httpClientTrusting(caPath string) (*http.Client, error) {
 	if !pool.AppendCertsFromPEM(ca) {
 		return nil, fmt.Errorf("no certificates found in %s", caPath)
 	}
+	// Shared by every worker. The transport pools connections, and the wrapper
+	// collapses the per-create resource-type refetch into one request for the run.
+	transport := &http.Transport{
+		TLSClientConfig:     &tls.Config{RootCAs: pool},
+		MaxIdleConnsPerHost: 32,
+	}
 	return &http.Client{
 		Timeout:   60 * time.Second,
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}},
+		Transport: &resourceTypesCache{base: transport},
 	}, nil
 }
 

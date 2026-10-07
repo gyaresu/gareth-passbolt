@@ -1,5 +1,8 @@
 subscription_key.txt
 .DS_Store
+
+# Seeder binary, dropped here by a local `go build` in scripts/seed
+scripts/seed/seed
 plans/
 data
 gpg_volume

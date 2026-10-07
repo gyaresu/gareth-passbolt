@@ -87,7 +87,22 @@ docker compose --profile seed run --rm -e CLEAN=1 seeder
 
 # Pick an industry data set (default software; also secops, healthcare).
 docker compose --profile seed run --rm -e RESET=1 -e DATASET=secops seeder
+
+# Performance testing: generate a large vault to reproduce and profile large-vault
+# behaviour (cold-start login, client-side decrypt, local-storage write, list
+# rendering). Generated in the binary, so nothing large is committed. COUNT defaults
+# to 10000. Every resource is created through the API with client-side encryption,
+# so even across workers this takes minutes. WORKERS and BULK_SHARE_PCT tune it;
+# see scripts/seed/README.md.
+docker compose --profile seed run --rm --build -e DATASET=bulk -e COUNT=10000 seeder
 ```
+
+After editing anything under `scripts/seed/`, pass `--build`. Without it compose
+reuses the cached image and silently runs the previous binary.
+
+A large vault needs more than the stock PHP memory limit. `config/php/www.conf`
+raises it; a default install cannot serve a 10,000-resource index and the browser
+extension retries forever with no visible error.
 
 ### Certificate Management
 
