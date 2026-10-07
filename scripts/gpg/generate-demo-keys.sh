@@ -104,7 +104,7 @@ done
 echo "ECC GPG key generation complete!"
 echo ""
 echo "Generated ECC keys for:"
-echo "LDAP1 (Passbolt Inc.):"
+echo "LDAP1 (Passbolt):"
 echo "  - Ada Lovelace (ada@passbolt.com)"
 echo "  - Betty Holberton (betty@passbolt.com)"
 echo "  - Carol Shaw (carol@passbolt.com)"

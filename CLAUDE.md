@@ -128,7 +128,7 @@ Browser → Traefik (reverse proxy) → Passbolt (PHP-FPM)
                                        ├── Valkey (sessions)
                                        ├── Keycloak (SSO)
                                        ├── ldap-meta (LDAP aggregation)
-                                       │   ├── ldap1 (Passbolt Inc.)
+                                       │   ├── ldap1 (Passbolt)
                                        │   └── ldap2 (Example Corp.)
                                        └── SMTP4Dev (email testing)
 
@@ -141,7 +141,7 @@ The stack uses LDAP aggregation via OpenLDAP meta backend (`ldap-meta`). Passbol
 
 ### Demo Users
 
-LDAP1 (Passbolt Inc.) is seeded with five famous women in computing; GPG key passphrase = email. LDAP2 (Example Corp: John Smith, Sarah Johnson, Michael Chen, Lisa Rodriguez) is a deliberately separate, generically named org for the aggregation demo.
+LDAP1 (Passbolt) is seeded with five famous women in computing; GPG key passphrase = email. LDAP2 (Example Corp: John Smith, Sarah Johnson, Michael Chen, Lisa Rodriguez) is a deliberately separate, generically named org for the aggregation demo.
 
 | User | Known for | Email |
 |------|-----------|-------|

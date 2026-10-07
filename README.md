@@ -1,6 +1,6 @@
 # Passbolt Pro Demonstration Stack
 
-> Demo Environment: This repository contains demo credentials and self-signed certificates for testing only. Do not use in production without proper security configuration.
+> Demo Environment: This repository contains demo credentials and self-signed certificates for testing only. Do not use in production.
 
 ## What This Demonstrates
 
@@ -53,7 +53,7 @@ same version.
 ./scripts/setup.sh
 ```
 
-This sets up the full stack with Traefik reverse proxy, LDAP aggregation via OpenLDAP meta backend, Keycloak SSO, and all supporting services.
+Starts the full stack: Traefik, LDAP aggregation, Keycloak SSO and supporting services.
 
 **Configuration Options** (environment variables):
 
@@ -72,7 +72,7 @@ The setup script creates LDAP directories, generates GPG keys, and creates the a
 
 **Important: Manual LDAP Configuration Required**
 
-After setup, configure LDAP Directory Sync in the Passbolt web UI:
+After setup, configure LDAP Directory Sync in the passbolt web UI:
 1. Go to https://passbolt.local
 2. Log in as ada@passbolt.com (passphrase: ada@passbolt.com)
 3. Administration → Directory Synchronization
@@ -121,13 +121,13 @@ After setup, configure LDAP Directory Sync in the Passbolt web UI:
    ./scripts/ldap/setup/create-admin.sh
    ```
 
-8. Configure LDAP in Passbolt:
-   - Log in to Passbolt as administrator
+8. Configure LDAP in passbolt:
+   - Log in to passbolt as administrator
    - Go to Organization Settings > Users Directory
    - Configure LDAP settings (see [LDAP Integration](#ldap-integration))
 
 **Important Notes:**
-- LDAP users must be set up before creating the Passbolt admin user
+- LDAP users must be set up before creating the passbolt admin user
 - SMTP: Set "Use TLS" to No (SMTPS implicit TLS is used via `ssl://smtp.local`)
 - Requires valid Passbolt Pro subscription key in `subscription_key.txt`
 - Demo credentials are for testing only - use strong credentials in production
@@ -138,7 +138,7 @@ The stack uses LDAP aggregation via OpenLDAP meta backend for multi-directory in
 
 ### Directory Structure
 
-**LDAP1 (Passbolt Inc.) - dc=passbolt,dc=local:**
+**LDAP1 (Passbolt) - dc=passbolt,dc=local:**
 ```
 ou=users: Ada, Betty, Carol, Dame, Edith
 ou=groups: passbolt, developers, demoteam, admins
@@ -158,7 +158,7 @@ dc=example,dc=unified,dc=local → LDAP2
 
 ### Demo Users
 
-LDAP1 (Passbolt Inc.) is seeded with five famous women in computing. Each one has a GPG
+LDAP1 (Passbolt) is seeded with five famous women in computing. Each one has a GPG
 key made by `scripts/gpg/generate-demo-keys.sh`, and **the key passphrase is just the
 user's email address**. `ada@passbolt.com` is also the passbolt admin that `setup.sh`
 creates.
@@ -171,13 +171,13 @@ creates.
 | [Dame Stephanie Shirley](https://en.wikipedia.org/wiki/Steve_Shirley) | Founded the software house F International, staffed almost entirely by women programmers | `dame@passbolt.com` | passbolt, admins |
 | [Edith Clarke](https://en.wikipedia.org/wiki/Edith_Clarke) | First woman professor of electrical engineering in the US; first woman to deliver a paper at the AIEE | `edith@passbolt.com` | passbolt, demoteam |
 
-LDAP2 (Example Corp — John Smith, Sarah Johnson, Michael Chen, Lisa Rodriguez) is a
-separate company on purpose. It's there to show the meta backend merging two independent
-directories, so its users have generic placeholder names instead of famous pioneers.
+LDAP2 (Example Corp: John Smith, Sarah Johnson, Michael Chen, Lisa Rodriguez) is
+deliberately a separate company, to show the meta backend merging two independent
+directories. Its users have generic names rather than famous pioneers.
 
 ### LDAP Aggregation Configuration
 
-Passbolt connects to a single meta backend that transparently proxies to both LDAP1 and LDAP2. Configure via Web UI after running setup.
+passbolt connects to a single meta backend that transparently proxies to both LDAP1 and LDAP2. Configure via Web UI after running setup.
 
 **LDAP Meta Settings:**
 - Host: `ldap-meta.local`
@@ -199,7 +199,7 @@ All LDAP connections use LDAPS (port 636) with SSL/TLS encryption.
 **Certificate Management:**
 - ldap-meta uses pre-generated certificates committed to the repository (`certs/ldap-meta.crt`)
 - osixia/openldap (ldap1, ldap2) auto-generates self-signed certificates
-- Passbolt trusts the ldap-meta certificate via the ldaps_bundle.crt
+- passbolt trusts the ldap-meta certificate via the ldaps_bundle.crt
 
 **Test LDAPS:**
 ```bash
@@ -222,7 +222,7 @@ LDAP_READONLY_USER_PASSWORD: "readonly"
 ```
 
 **Connection Methods:**
-- LDAPS (implicit TLS): Port 636 - Used by Passbolt
+- LDAPS (implicit TLS): Port 636 - Used by passbolt
 - STARTTLS: Port 389 - Alternative option
 
 **Certificate Location in Container:**
@@ -232,7 +232,7 @@ LDAP_READONLY_USER_PASSWORD: "readonly"
 
 ### Directory Synchronization Settings
 
-**Passbolt Web UI (Organization Settings > Directory):**
+**passbolt Web UI (Organization Settings > Directory):**
 - Users Path: `ou=users`
 - Group Path: `ou=groups`
 - User Filter: `(objectClass=inetOrgPerson)`
@@ -243,17 +243,17 @@ LDAP_READONLY_USER_PASSWORD: "readonly"
 - Last Name: `sn`
 
 **Sync Behavior:**
-One-way read-only from LDAP to Passbolt. LDAP is the source of truth.
+One-way read-only from LDAP to passbolt. LDAP is the source of truth.
 
 ### References
 
-- Passbolt LDAP: https://www.passbolt.com/configure/ldap
+- passbolt LDAP: https://www.passbolt.com/configure/ldap
 - LdapRecord Multi-Domain: https://ldaprecord.com/docs/laravel/v2/configuration
 - OpenLDAP Admin: https://www.openldap.org/doc/admin24/
 
 ## Traefik Reverse Proxy (Default)
 
-Traefik provides automatic HTTPS routing and service discovery.
+Traefik routes HTTPS and discovers services automatically.
 
 ### Setup
 
@@ -265,21 +265,21 @@ Uses the default `docker-compose.yaml` file.
 
 ### Configuration
 
-YAML files (fixes indentation issues in Passbolt docs):
+YAML files (fixes indentation issues in passbolt docs):
 - `config/traefik/traefik.yaml` - Main config with HTTP to HTTPS redirect
 - `config/traefik/conf.d/tls.yaml` - TLS 1.2+ settings
 - `config/traefik/conf.d/headers.yaml` - Security headers
 
 ### Access
 
-- Passbolt: https://passbolt.local
+- passbolt: https://passbolt.local
 - Keycloak: https://keycloak.local
 - SMTP4Dev: https://smtp.local
 - Traefik Dashboard: https://traefik.local
 
-### Internal routing: Passbolt to Keycloak
+### Internal routing: passbolt to Keycloak
 
-Keycloak listens on `8443` inside its container, not `443`, so Passbolt can't reach `https://keycloak.local` through the compose DNS alias (which would hit the container directly on `:443`). Traffic has to loop back out through Traefik, which publishes `:443` on the docker host and proxies to `keycloak:8443`.
+Keycloak listens on `8443` inside its container, not `443`, so passbolt can't reach `https://keycloak.local` through the compose DNS alias (which would hit the container directly on `:443`). Traffic has to loop back out through Traefik, which publishes `:443` on the docker host and proxies to `keycloak:8443`.
 
 The `passbolt` service in `docker-compose.yaml` has:
 
@@ -288,7 +288,7 @@ extra_hosts:
   - "keycloak.local:host-gateway"
 ```
 
-This overrides `keycloak.local` inside the Passbolt container so it resolves to the docker host instead of the Keycloak container. `host-gateway` is docker's built-in alias for the host IP and works regardless of the compose network subnet (a previous hardcoded value, `172.19.0.1`, broke whenever docker assigned a different subnet).
+This overrides `keycloak.local` inside the passbolt container so it resolves to the docker host instead of the Keycloak container. `host-gateway` is docker's alias for the host IP, so it survives a subnet change. The previous hardcoded `172.19.0.1` broke whenever docker assigned a different subnet.
 
 ### Validate Config
 
@@ -300,18 +300,18 @@ This overrides `keycloak.local` inside the Passbolt container so it resolves to 
 
 | Service   | URL                       | Credentials        | Purpose |
 |-----------|---------------------------|-------------------|---------|
-| Passbolt  | https://passbolt.local    | Created during setup | Main application |
+| passbolt  | https://passbolt.local    | Created during setup | Main application |
 | Keycloak  | https://keycloak.local | admin / admin    | SSO provider |
 | SMTP4Dev  | https://smtp.local    | N/A               | Email testing |
 | Traefik   | https://traefik.local | N/A | Reverse proxy dashboard |
-| LDAP1     | ldap1.local:636 (LDAPS) | cn=readonly,dc=passbolt,dc=local / readonly | Passbolt Inc. directory |
+| LDAP1     | ldap1.local:636 (LDAPS) | cn=readonly,dc=passbolt,dc=local / readonly | Passbolt directory |
 | LDAP2     | ldap2.local:636 (LDAPS) | cn=reader,dc=example,dc=com / reader123 | Example Corp directory |
 | LDAP Meta | ldap-meta.local:636 (LDAPS) | cn=admin,dc=unified,dc=local / secret | Aggregation proxy |
 | Valkey    | valkey:6379 (internal)    | N/A               | Session storage |
 
 ## Valkey Session Handling
 
-Valkey provides Redis-compatible session storage for better performance than file-based sessions.
+Valkey stores sessions. Redis-compatible, and faster than file-based sessions.
 
 ### Configuration
 
@@ -324,7 +324,7 @@ valkey:
   command: valkey-server --appendonly yes
 ```
 
-Passbolt environment variables:
+passbolt environment variables:
 ```yaml
 CACHE_CAKECORE_CLASSNAME: Cake\Cache\Engine\RedisEngine
 CACHE_CAKECORE_HOST: valkey
@@ -345,10 +345,10 @@ docker compose exec valkey valkey-cli keys "*session*"
 
 ## Environment Variables Configuration
 
-Environment variables documented in official Passbolt documentation:
+Variables used by this stack. Full reference in the passbolt docs:
 
 ### Core Application Variables
-- `APP_FULL_BASE_URL` - Passbolt application URL
+- `APP_FULL_BASE_URL` - passbolt application URL
 - `DATASOURCES_DEFAULT_*` - Database connection settings
 
 ### Email Configuration
@@ -366,12 +366,12 @@ Environment variables documented in official Passbolt documentation:
 - `SESSION_DEFAULTS` - Session storage method
 
 ### Important Notes
-- Directory Sync details (host, port, credentials, filters) configured via Passbolt Web UI
+- Directory Sync details (host, port, credentials, filters) configured via passbolt Web UI
 - PHP TLS configuration in `config/php/ssl.ini`
 
 ## SIEM Audit Logging
 
-Passbolt supports file-based and syslog-based audit logging. Both can run simultaneously.
+passbolt supports file-based and syslog-based audit logging. Both can run simultaneously.
 
 ### Configuration
 
@@ -419,7 +419,7 @@ Strategies are independent of output method (file or syslog). Any strategy can b
 **Syslog Logs:**
 - Location: `./logs/passbolt/syslog.log` (on host)
 - Format: Syslog format with JSON payload
-- Filter: Use `grep "passbolt-audit"` to see only Passbolt entries
+- Filter: Use `grep "passbolt-audit"` to see only passbolt entries
 - Example:
 ```
 2025-11-24T23:11:33.093198+00:00 1d3ec95b1d81 passbolt-audit:: 2025-11-24 23:11:33 info: {"timestamp":"2025-11-24 23:11:33","user":"ada@passbolt.com","action":"password_update","context":"Ada Lovelace (ada@passbolt.com) updated password","status":1,"resource_id":"f6c326ee-c967-437a-8f9e-e163eb73c929",...}
@@ -432,12 +432,12 @@ Strategies are independent of output method (file or syslog). Any strategy can b
 tail -f logs/passbolt/action-logs.log
 ```
 
-**Watch syslog (Passbolt entries only):**
+**Watch syslog (passbolt entries only):**
 ```bash
 tail -f logs/passbolt/syslog.log | grep --line-buffered 'passbolt-audit'
 ```
 
-**View recent Passbolt audit entries:**
+**View recent passbolt audit entries:**
 ```bash
 grep "passbolt-audit" logs/passbolt/syslog.log | tail -n 20
 ```
@@ -447,7 +447,7 @@ grep "passbolt-audit" logs/passbolt/syslog.log | tail -n 20
 Rsyslog sidecar is disabled by default. Enable with `ENABLE_RSYSLOG=true ./scripts/setup.sh` or `docker compose --profile audit up -d`.
 
 When enabled:
-- Receives logs from Passbolt via shared Unix socket (`/dev/log`)
+- Receives logs from passbolt via shared Unix socket (`/dev/log`)
 - Writes to `./logs/passbolt/syslog.log`
 - Can forward to external syslog servers
 
@@ -482,7 +482,7 @@ Actions not logged by username strategy (use default strategy to capture all):
 
 ## URL/Domain Tracking
 
-Passbolt does not store which URL, domain, or hostname users access in its database. To identify which users access which URLs (useful for multi-domain setups, DNS aliases, or environment tracking), correlate nginx access logs with Passbolt action logs.
+passbolt does not store which URL, domain, or hostname users access in its database. To see which user hit which URL, correlate nginx access logs with passbolt action logs. Useful for multi-domain setups, DNS aliases and environment tracking.
 
 ### Nginx Configuration
 
@@ -500,24 +500,24 @@ log_format with_host '$remote_addr - $remote_user [$time_local] "$request" '
 - IP address, request path, Host header (domain/hostname), timestamp
 - Example: `[27/Nov/2025:01:50:40] "POST /auth/login.json" ... "passbolt.local"`
 
-**Passbolt logs** (`./logs/passbolt/syslog.log`):
+**passbolt logs** (`./logs/passbolt/syslog.log`):
 - User email, action type, timestamp
 - Example: `{"timestamp":"2025-11-27 01:50:40","user":"ada@passbolt.com","action":"user_login"}`
 
 **Correlation method:**
 1. Find `POST /auth/login.json` requests in nginx logs (includes Host header)
-2. Match with `user_login` actions in Passbolt syslog logs (includes user email)
+2. Match with `user_login` actions in passbolt syslog logs (includes user email)
 3. Match by timestamp (±2-3 seconds) and request path
 4. Result: `user@email.com` → `domain.example.com`
 
 **Example:**
 - Nginx: `[27/Nov/2025:01:50:40] "POST /auth/login.json" ... "passbolt.local"`
-- Passbolt: `{"timestamp":"2025-11-27 01:50:40","user":"ada@passbolt.com","action":"user_login"}`
+- passbolt: `{"timestamp":"2025-11-27 01:50:40","user":"ada@passbolt.com","action":"user_login"}`
 - Result: `ada@passbolt.com` accessed `passbolt.local`
 
 ### Implementation
 
-Parse logs with a script or log aggregation tool (ELK, Splunk, etc.) to automatically correlate and generate reports showing which users access which domains/URLs.
+Automate this with a log aggregation tool such as ELK or Splunk.
 
 ## Keycloak SSO Configuration
 
@@ -578,7 +578,7 @@ php_admin_value[curl.cainfo] = "/etc/ssl/certs/ca-certificates.crt"
 5. **Create User:**
    - Go to "Users" > "Add user"
    - Username: ada
-   - Email: ada@passbolt.com (must match Passbolt admin email)
+   - Email: ada@passbolt.com (must match passbolt admin email)
    - First name: Ada
    - Last name: Lovelace
    - Click "Create"
@@ -587,9 +587,9 @@ php_admin_value[curl.cainfo] = "/etc/ssl/certs/ca-certificates.crt"
      - Temporary: OFF
      - Click "Set password"
 
-### Passbolt OAuth2 Configuration
+### passbolt OAuth2 Configuration
 
-Configure in Passbolt web interface under Administration → Authentication → SSO:
+Configure in passbolt web interface under Administration → Authentication → SSO:
 
 - **Issuer URL**: `https://keycloak.local:8443/realms/passbolt`
 - **OpenID Configuration Path**: `/.well-known/openid-configuration`
@@ -599,8 +599,6 @@ Configure in Passbolt web interface under Administration → Authentication → 
 - **SSL Verification**: Enabled
 
 **Full OpenID Configuration URL**: `https://keycloak.local:8443/realms/passbolt/.well-known/openid-configuration`
-
-This endpoint provides the complete OAuth2/OIDC discovery document, including authorization, token, and userinfo endpoints.
 
 **Verify Configuration:**
 ```bash
@@ -621,11 +619,11 @@ curl -k https://keycloak.local:8443/realms/passbolt/.well-known/openid-configura
 
 ### Testing SSO Integration
 
-1. Access Passbolt at https://passbolt.local
+1. Access passbolt at https://passbolt.local
 2. Click "SSO Login"
 3. Redirected to Keycloak
 4. Log in with ada@passbolt.com / passbolt
-5. Redirected back to Passbolt and logged in
+5. Redirected back to passbolt and logged in
 
 **Note:** Configuration examples in `assets/` directory.
 
@@ -635,7 +633,7 @@ SMTP4Dev: https://smtp.local (SMTPS port 465)
 
 ### Configuration
 
-Passbolt configured to use SMTP4Dev with SMTPS (implicit TLS):
+passbolt configured to use SMTP4Dev with SMTPS (implicit TLS):
 
 ```yaml
 # Email Configuration
@@ -672,15 +670,13 @@ openssl pkcs12 -export \
 
 ### Testing Email
 
-1. Create a test user in Passbolt
+1. Create a test user in passbolt
 2. Check for registration email in SMTP4Dev web interface
 3. Verify email content and headers
 
 ## GPG Primer
 
 OpenPGP uses public-key cryptography: each user has a key pair (private + public). In passbolt, users generate or import GPG keys through the browser extension during account setup.
-
-**Note:** passbolt handles GPG operations automatically through the browser extension. Users typically don't need to use command-line GPG tools.
 
 ### How passbolt Uses GPG
 
@@ -895,10 +891,10 @@ docker compose exec ldap1 ldapsearch -x -H ldap://localhost:389 \
 
 ### Testing User Removal and Reactivation
 
-#### Configure Passbolt for User Suspension
-Before testing user removal, ensure Passbolt is configured to suspend users rather than delete them:
+#### Configure passbolt for User Suspension
+Configure passbolt to suspend users rather than delete them:
 
-1. Log in to Passbolt as an administrator
+1. Log in to passbolt as an administrator
 2. Go to Organization Settings > Directory Synchronization
 3. Under "Synchronization Options", set:
    - "Delete Users" to "No"
@@ -1038,7 +1034,7 @@ docker compose exec valkey valkey-cli keys "*session*"
 
 ### SCIM API Testing with Bruno
 
-Test Passbolt's SCIM (System for Cross-domain Identity Management) endpoints using Bruno API client.
+Test passbolt's SCIM (System for Cross-domain Identity Management) endpoints using Bruno API client.
 
 #### Setup Bruno
 
@@ -1061,9 +1057,9 @@ Test Passbolt's SCIM (System for Cross-domain Identity Management) endpoints usi
 7. **Search Users** - Find users with filters
 8. **Delete User** - Remove test user
 
-#### Passbolt SCIM Requirements
+#### passbolt SCIM Requirements
 
-- **Email Type**: Passbolt requires `"type": "work"` in email objects
+- **Email Type**: passbolt requires `"type": "work"` in email objects
 - **Authentication**: Uses Bearer token authentication
 - **Content-Type**: Must be `application/scim+json`
 - **User Schema**: Requires `userName`, `name`, and `emails` with work type
@@ -1082,7 +1078,7 @@ curl -k --request GET \
 
 - **"Email not found" error**: Ensure email has `"type": "work"`
 - **Authentication errors**: Verify bearer token is correct in environment
-- **User not found**: Check if user exists in Passbolt first
+- **User not found**: Check if user exists in passbolt first
 
 ### Manual Verification
 ```bash
@@ -1107,7 +1103,7 @@ docker compose logs passbolt
 #### Certificate Verification Failures
 **Symptoms**: `verify error:num=19:self-signed certificate in certificate chain` or "Can't contact LDAP server"
 
-**Root Cause**: The LDAP server uses its own self-signed certificate issued by `docker-light-baseimage`, but the certificate bundle is missing the CA certificate or contains incorrect certificates.
+**Root Cause**: The LDAP server uses its own self-signed certificate issued by `docker-light-baseimage`, and `certs/ldaps_bundle.crt` holds the wrong certificate.
 
 **Solutions**:
 1. **Verify the certificate bundle exists:**
@@ -1157,7 +1153,7 @@ openssl s_client -connect localhost:3636 -servername ldap-meta.local -brief
 ```
 
 ### LDAPS Connection Issues
-**Symptoms**: Passbolt cannot connect to LDAP server
+**Symptoms**: passbolt cannot connect to LDAP server
 
 **Solutions**:
 - Verify LDAP server is running with TLS enabled
@@ -1171,16 +1167,16 @@ docker compose exec ldap1 ldapsearch -x -H ldaps://localhost:636 \
 ```
 
 ### User Synchronization Issues
-**Symptoms**: Users appear in LDAP but not in Passbolt
+**Symptoms**: Users appear in LDAP but not in passbolt
 
 **Solutions**:
 - Verify LDAP search filters are correct
 - Check that users have the required `objectClass` attributes
 - Ensure the bind DN has proper search permissions
-- Run manual synchronization in Passbolt UI
-- Check that users have valid email addresses (required for Passbolt)
+- Run manual synchronization in passbolt UI
+- Check that users have valid email addresses (required for passbolt)
 
-**Note**: Remember that sync is one-way from LDAP to Passbolt. Changes to user data must be made in LDAP, not in Passbolt.
+**Note**: sync is one-way. Change user data in LDAP, not passbolt.
 
 ### LDAP Admin User Issues
 **Symptoms**: "Can't contact LDAP server" during bind attempts
@@ -1216,17 +1212,17 @@ docker compose exec ldap1 ldapsearch -x -H ldaps://localhost:636 \
    ```
 
 ### Group Membership Issues
-**Symptoms**: Group memberships not syncing to Passbolt
+**Symptoms**: Group memberships not syncing to passbolt
 
 **Solutions**:
-- Verify users have activated their Passbolt accounts
+- Verify users have activated their passbolt accounts
 - Check that groups use `groupOfUniqueNames` object class
 - Ensure member references use full DNs
 
 #### LDAP Meta Backend DN Transformation Issue
-**Symptoms**: Users sync to Passbolt but group memberships fail to sync, or incorrect users appear in groups
+**Symptoms**: Users sync to passbolt but group memberships fail to sync, or incorrect users appear in groups
 
-**Root Cause**: The LDAP meta backend's `suffixmassage` feature doesn't automatically transform DN references in attributes like `uniqueMember`. Group memberships contain DNs in the original backend format instead of the unified namespace format.
+**Root Cause**: the meta backend's `suffixmassage` does not rewrite DNs inside attributes like `uniqueMember`, so memberships still carry the backend's own DN format rather than the unified one.
 
 **Diagnosis**:
 ```bash
@@ -1237,7 +1233,7 @@ docker exec ldap1-meta ldapsearch -H ldap://localhost:389 -D "cn=admin,dc=unifie
 docker exec ldap1-meta ldapsearch -H ldap://localhost:389 -D "cn=admin,dc=unified,dc=local" -w "secret" -b "dc=unified,dc=local" "(mail=user@example.com)"
 ```
 
-**Solution**: The setup scripts have been updated to use the correct DN format from the start. If you encounter this issue with existing deployments, update group membership DNs to use the unified namespace format:
+**Solution**: fresh setups use the correct DN format. To fix an existing deployment, rewrite the group membership DNs:
 ```bash
 # Create LDIF file to fix group memberships
 cat > fix_group_memberships.ldif << EOF
@@ -1261,46 +1257,21 @@ docker exec -i ldap2 ldapmodify -H ldap://localhost:389 -D "cn=admin,dc=example,
 rm fix_group_memberships.ldif
 ```
 
-**Prevention**: The setup scripts now create groups with the correct DN format automatically. This issue should not occur in fresh deployments.
+Then run directory sync to confirm.
 
-**Verification**: After applying the fix, run directory sync in Passbolt to verify group memberships are correctly synchronized.
+### Quick checks
 
-### SSO Login Failures
-**Symptoms**: SSO login doesn't work
-
-**Solutions**:
-- Verify the client ID and secret match between Keycloak and Passbolt
-- Check that the redirect URI is correctly configured
-- Ensure the user exists in both systems with matching email addresses
-
-### Database Connection Issues
-**Symptoms**: Keycloak fails to connect to the database
-
-**Solutions**:
-- Check database credentials in docker-compose.yaml
-- Verify the keycloak database exists and permissions are set
-- Check MariaDB logs for connection errors
-
-### Email Not Sending
-**Symptoms**: Passbolt emails not being sent
-
-**Solutions**:
-- Check certificate files exist and have correct permissions
-- Verify SMTP configuration in Passbolt
-- Check SMTP4Dev logs for connection issues
-
-### Valkey Session Issues
-**Symptoms**: Session handling failures, users getting logged out unexpectedly
-
-**Solutions**:
-- Verify Valkey container is running: `docker compose ps valkey`
-- Check Valkey connectivity: `docker compose exec passbolt ping valkey`
-- Check Valkey logs: `docker compose logs valkey`
+| Symptom | What to check |
+|---|---|
+| SSO login fails | Client ID and secret match between Keycloak and passbolt; redirect URI is right; the user exists in both with the same email |
+| Keycloak cannot reach its database | Credentials in `docker-compose.yaml`; the `keycloak` database exists with the right permissions; MariaDB logs |
+| Emails not sending | Certificate files exist with the right permissions; SMTP settings in passbolt; SMTP4Dev logs |
+| Sessions dropping, users logged out | `docker compose ps valkey`, then `docker compose exec passbolt ping valkey`, then `docker compose logs valkey` |
 
 ### Traefik Configuration Issues
 **Symptoms**: "no valid configuration found in file: /traefik.yaml"
 
-**Cause**: Improperly indented YAML (usually from copying Passbolt docs).
+**Cause**: Improperly indented YAML (usually from copying passbolt docs).
 
 **Fix**:
 ```bash
@@ -1358,7 +1329,7 @@ chmod 644 smtp4dev/certs/tls.pfx
 
 ### LDAP Connection Issues
 
-**Symptoms**: Passbolt cannot connect to LDAP server
+**Symptoms**: passbolt cannot connect to LDAP server
 
 **Solutions**:
 1. Verify ldap-meta is running: `docker compose ps ldap-meta`
@@ -1425,7 +1396,7 @@ mysql -u user -p database < scripts/diagnose-db-growth.sql | column -t
 
 ### Log Analysis
 
-#### Passbolt Logs
+#### passbolt Logs
 ```bash
 docker compose logs passbolt
 docker compose logs -f passbolt
@@ -1468,7 +1439,7 @@ Key directories:
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License (AGPL) as published by the Free Software Foundation version 3.
 
-The name "Passbolt" is a registered trademark of Passbolt SA, and Passbolt SA hereby declines to grant a trademark license to "Passbolt" pursuant to the GNU Affero General Public License version 3 Section 7(e), without a separate agreement with Passbolt SA.
+The name "passbolt" is a registered trademark of passbolt SA, and passbolt SA hereby declines to grant a trademark license to "passbolt" pursuant to the GNU Affero General Public License version 3 Section 7(e), without a separate agreement with passbolt SA.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See GNU Affero General Public License for more details.
 

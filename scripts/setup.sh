@@ -164,19 +164,19 @@ echo "✓ Infrastructure services ready"
 # Step 3: Start LDAP backend servers
 echo ""
 echo "Step 3: Starting LDAP backend servers..."
-echo "   Starting LDAP1 (Passbolt Inc.) and LDAP2 (Example Corp.)..."
+echo "   Starting LDAP1 (Passbolt) and LDAP2 (Example Corp.)..."
 $COMPOSE_CMD up -d ldap1 ldap2
 wait_for_ldap "ldap1" "cn=admin,dc=passbolt,dc=local" "P4ssb0lt" "dc=passbolt,dc=local"
 wait_for_ldap "ldap2" "cn=admin,dc=example,dc=com" "Ex4mple123" "dc=example,dc=com"
 echo "✓ LDAP backend servers ready"
 
-# Step 4: Setup LDAP1 data (Passbolt Inc.)
+# Step 4: Setup LDAP1 data (Passbolt)
 echo ""
-echo "Step 4: Setting up LDAP1 data (Passbolt Inc.)..."
+echo "Step 4: Setting up LDAP1 data (Passbolt)..."
 echo "   Creating historical computing pioneers..."
 export COMPOSE_FILE=docker-compose.yaml
 ./scripts/ldap/setup/initial-setup.sh
-echo "✓ LDAP1 (Passbolt Inc.) data setup complete"
+echo "✓ LDAP1 (Passbolt) data setup complete"
 
 # Step 5: Setup LDAP2 data (Example Corp.)
 echo ""
@@ -312,7 +312,7 @@ echo "   - Traefik Dashboard: https://traefik.local"
 echo "   - LDAP Meta:         ldap-meta.local:3389 (LDAP), :3636 (LDAPS)"
 echo ""
 echo "Demo Users:"
-echo "LDAP1 (Passbolt Inc.) - dc=passbolt,dc=local:"
+echo "LDAP1 (Passbolt) - dc=passbolt,dc=local:"
 echo "   - ada@passbolt.com (Ada Lovelace) - CTO"
 echo "   - betty@passbolt.com (Betty Holberton) - Senior Developer"
 echo "   - carol@passbolt.com (Carol Shaw) - Game Dev Lead"
