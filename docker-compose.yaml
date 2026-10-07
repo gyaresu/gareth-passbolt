@@ -156,7 +156,8 @@ services:
     volumes:
       - gpg_volume:/etc/passbolt/gpg
       - jwt_volume:/etc/passbolt/jwt
-      - ./config/php/www.conf:/etc/php-fpm.d/www.conf
+      # Must sort after the image's own zz-docker.conf; pool.d loads alphabetically and last wins
+      - ./config/php/www.conf:/etc/php/8.4/fpm/pool.d/zzz-local.conf
       - ./config/php/ssl.ini:/etc/php/8.2/cli/conf.d/99-ssl.ini
       - ./config/nginx/nginx-passbolt.conf:/etc/nginx/sites-enabled/nginx-passbolt.conf
       - ./keys/ca.crt:/usr/local/share/ca-certificates/keycloak.crt
@@ -347,7 +348,12 @@ services:
   #   docker compose --profile seed run --rm -e CLEAN=1 seeder
   # Pick an industry data set (default software; also secops, healthcare):
   #   docker compose --profile seed run --rm -e RESET=1 -e DATASET=secops seeder
+  # Generate a large vault for performance work (see scripts/seed/README.md):
+  #   docker compose --profile seed run --rm -e DATASET=bulk -e COUNT=10000 seeder
   # Edit the sets under scripts/seed/datasets/ to change what gets created.
+  # The Go binary is compiled into the image, so after changing anything under
+  # scripts/seed/ you must pass --build or the old binary runs:
+  #   docker compose --profile seed run --rm --build -e DATASET=bulk seeder
   seeder:
     profiles: ["seed"]
     build: ./scripts/seed
