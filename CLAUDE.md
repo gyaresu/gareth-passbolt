@@ -54,13 +54,14 @@ docker compose exec -T db mariadb -u passbolt -pP4ssb0lt passbolt  # Database ac
 ```bash
 ./scripts/ldap/setup/initial-setup.sh           # Initialize LDAP1 directory
 ./scripts/ldap2/setup/initial-setup.sh          # Initialize LDAP2 directory
+./scripts/ldap/setup/fix-group-members.sh       # Existing stacks: rewrite LDAP1 group members as unified DNs, then sync
 ./scripts/ldap/users/add.sh "First" "Last" "email@domain"  # Add user to LDAP1
 ```
 
 ### Directory Sync
 
 ```bash
-docker compose exec passbolt su -s /bin/bash -c "/usr/share/php/passbolt/bin/cake directory_sync all --persist --quiet" www-data
+./scripts/directory-sync.sh   # passes in the server key fingerprint; plain exec of cake directory_sync crashes without it
 ```
 
 ### Testing
@@ -88,6 +89,10 @@ docker compose --profile seed run --rm -e CLEAN=1 seeder
 # Pick an industry data set (default software; also secops, healthcare).
 docker compose --profile seed run --rm -e RESET=1 -e DATASET=secops seeder
 
+# Seed, then have the other users read a few shared secrets, so the activity
+# sidebar and audit logs show more than one actor.
+docker compose --profile seed run --rm -e RESET=1 -e ACTIVITY=1 seeder
+
 # Performance testing: generate a large vault to reproduce and profile large-vault
 # behaviour (cold-start login, client-side decrypt, local-storage write, list
 # rendering). Generated in the binary, so nothing large is committed. COUNT defaults
@@ -107,7 +112,8 @@ extension retries forever with no visible error.
 ### Certificate Management
 
 ```bash
-./scripts/generate-certificates.sh           # Generate all TLS certificates (keys/)
+./scripts/generate-certificates.sh           # Generate all TLS certificates and a NEW root CA (keys/)
+./scripts/generate-certificates.sh --renew   # Re-sign expired service certs with the existing root CA
 ./scripts/generate-ldap-meta-cert.sh         # Generate the LDAP meta proxy cert (certs/)
 ./scripts/generate-smtp-certs.sh             # Generate the SMTP4Dev cert (smtp4dev/certs/)
 ./scripts/validate-traefik-config.sh         # Validate Traefik YAML config

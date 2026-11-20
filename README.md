@@ -175,6 +175,20 @@ LDAP2 (Example Corp: John Smith, Sarah Johnson, Michael Chen, Lisa Rodriguez) is
 deliberately a separate company, to show the meta backend merging two independent
 directories. Its users have generic names rather than famous pioneers.
 
+**LDAP1 group members are written as unified DNs.** The meta backend rewrites entry
+DNs into the unified tree but leaves DN-valued attributes such as `uniqueMember`
+untouched. A member written as `cn=betty,ou=users,dc=passbolt,dc=local` therefore
+matches no synced user, and directory sync drops it. So
+`scripts/ldap/setup/initial-setup.sh` writes members as
+`cn=betty,ou=users,dc=passbolt,dc=unified,dc=local`, the same way the LDAP2 ldifs
+write `cn=John Smith,ou=people,dc=example,dc=unified,dc=local`.
+
+On a stack set up before that change, `developers` and `demoteam` hold ada alone in
+passbolt. Run `./scripts/ldap/setup/fix-group-members.sh`, which rewrites only the
+group members in place, then `./scripts/directory-sync.sh`. Do not re-run `initial-setup.sh`
+for this: it recreates the users with new entry IDs, and the next sync deletes their
+passbolt accounts and re-adds them as new users who must complete setup again.
+
 ### LDAP Aggregation Configuration
 
 passbolt connects to a single meta backend that transparently proxies to both LDAP1 and LDAP2. Configure via Web UI after running setup.
@@ -187,9 +201,12 @@ passbolt connects to a single meta backend that transparently proxies to both LD
 - Password: `secret`
 - Use SSL: `true`
 
-**Sync Command:**
+**Sync Command:** the script passes in the server key fingerprint, which a plain
+`docker compose exec` shell does not have, so running `cake directory_sync` directly
+fails with `setDecryptKeyFromFingerprint(): ... null given`.
 ```bash
-docker compose exec passbolt su -s /bin/bash -c "/usr/share/php/passbolt/bin/cake directory_sync all --persist --quiet" www-data
+./scripts/directory-sync.sh           # sync and persist
+./scripts/directory-sync.sh all       # dry run: report what would change
 ```
 
 ### Security (LDAPS)
@@ -955,6 +972,15 @@ Pick an industry data set with `DATASET` (default `software`; also `secops` and
 docker compose --profile seed run --rm -e RESET=1 -e DATASET=secops seeder
 ```
 
+Each set also shares a few entries at "can read" or "owner", gives some an expired
+or upcoming password expiry date, and adds comments. To have the other users read
+some of the shared secrets after seeding, so the activity sidebar and audit logs
+show more than one person, add `-e ACTIVITY=1`:
+
+```bash
+docker compose --profile seed run --rm -e RESET=1 -e ACTIVITY=1 seeder
+```
+
 Change what gets created by editing the sets under `scripts/seed/datasets/`. Full
 details, including the icon, colour and custom-field options, are in
 [`scripts/seed/README.md`](scripts/seed/README.md).
@@ -974,14 +1000,21 @@ re-encrypts the secret to every recipient. Use `BULK_SHARE_PCT` to test as someo
 other than the owner:
 
 ```bash
-# 20% of the vault shared with the developers and demoteam groups
+# 20% of the vault shared with the project-teams group
 docker compose --profile seed run --rm --build \
   -e RESET=1 -e DATASET=bulk -e COUNT=10000 -e BULK_SHARE_PCT=20 seeder
 ```
 
-`BULK_SHARE_GROUPS` sets the groups, default `developers,demoteam`. Missing groups
+`BULK_SHARE_GROUPS` sets the groups, default `project-teams`. Missing groups
 are skipped with a warning. Sharing halves throughput: 12,000 resources takes 2m43s
 unshared, 5m50s at 20% shared.
+
+Pick a group that has members other than the owner, or the share is a no-op for
+encryption: the secret is re-encrypted to each recipient's key, and a group of one
+means that recipient is the owner. On this stack `project-teams` (4 members),
+`developers` and `demoteam` (3 each) and `security` / `operations` / `creative` (2 each)
+qualify, once the LDAP1 groups have synced (see the LDAP group membership note above).
+The seeder warns when a share group has one member or fewer.
 
 Large vaults need more than the stock PHP memory limit, which
 `config/php/www.conf` raises. Pass `--build` after editing anything under
@@ -1113,6 +1146,16 @@ docker compose logs passbolt
    # Should show: Subject: CN=ldap-meta.local
    ```
 
+   Then confirm it is the certificate ldap-meta serves; a bundle left over from an
+   earlier `ldap-meta.crt` fails verification the same way:
+   ```bash
+   cmp certs/ldap-meta.crt certs/ldaps_bundle.crt && echo "bundle is current"
+   ```
+   passbolt reads the bundle directly only because `docker-compose.yaml` sets both
+   `..._SSL_CUSTOM_OPTIONS_CAFILE` and `..._SSL_CUSTOM_OPTIONS_CADIR`; with CAFILE
+   alone it is ignored and the container's system trust store, built at start-up,
+   is used instead.
+
 2. **If the bundle is incorrect, copy the pre-generated certificate:**
    ```bash
    # Copy the ldap-meta certificate to the bundle
@@ -1123,7 +1166,20 @@ docker compose logs passbolt
    docker compose up -d passbolt
    ```
 
+#### Renew Expired Service Certificates
+The passbolt, Keycloak, SMTP and Traefik certificates last 365 days; the root CA lasts
+ten years. When they expire, clients fail with `x509: certificate has expired`.
+Re-sign them with the existing root CA, so browsers that already trust it keep
+working, then restart the services that serve them:
+```bash
+./scripts/generate-certificates.sh --renew
+docker compose restart traefik keycloak passbolt
+```
+`setup.sh` does this automatically when the passbolt certificate is within 30 days
+of expiry.
+
 #### Regenerate Certificates
+A full run replaces the root CA, which then has to be trusted again in every browser.
 ```bash
 # Step 1: Generate new certificate hierarchy (for Passbolt, Keycloak, etc.)
 ./scripts/generate-certificates.sh
@@ -1233,7 +1289,7 @@ docker exec ldap1-meta ldapsearch -H ldap://localhost:389 -D "cn=admin,dc=unifie
 docker exec ldap1-meta ldapsearch -H ldap://localhost:389 -D "cn=admin,dc=unified,dc=local" -w "secret" -b "dc=unified,dc=local" "(mail=user@example.com)"
 ```
 
-**Solution**: fresh setups use the correct DN format. To fix an existing deployment, rewrite the group membership DNs:
+**Solution**: fresh setups use the correct DN format. For LDAP1 on an existing deployment, run `./scripts/ldap/setup/fix-group-members.sh` and then `./scripts/directory-sync.sh`. For LDAP2, rewrite the group membership DNs:
 ```bash
 # Create LDIF file to fix group memberships
 cat > fix_group_memberships.ldif << EOF
