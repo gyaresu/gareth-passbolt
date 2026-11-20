@@ -36,7 +36,7 @@ verify_user_in_group() {
     local username=$(get_username "$email")
     docker compose exec ldap1 ldapsearch -x -H ldap://localhost \
         -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt \
-        -b "dc=passbolt,dc=local" "(cn=$groupname)" | grep -q "uniqueMember: cn=$username,ou=users,dc=passbolt,dc=local"
+        -b "dc=passbolt,dc=local" "(cn=$groupname)" | grep -q "uniqueMember: cn=$username,ou=users,dc=passbolt,dc=unified,dc=local"
     return $?
 }
 

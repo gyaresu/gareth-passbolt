@@ -122,6 +122,12 @@ if [ ! -f "keys/passbolt.crt" ] || [ ! -f "keys/keycloak.crt" ]; then
     echo "   Generating SSL certificates..."
     ./scripts/generate-certificates.sh
     echo "✓ SSL certificates generated"
+elif ! openssl x509 -checkend 2592000 -noout -in keys/passbolt.crt >/dev/null; then
+    # Service certs last 365 days. Re-sign with the existing root CA so browsers
+    # that already trust it keep working; a full run would replace the CA.
+    echo "   SSL certificates expire within 30 days, renewing..."
+    ./scripts/generate-certificates.sh --renew
+    echo "✓ SSL certificates renewed"
 else
     echo "✓ SSL certificates already exist"
 fi
@@ -135,11 +141,13 @@ else
     echo "✓ LDAP meta certificate already exists"
 fi
 
-# Ensure ldaps_bundle.crt exists (copy from the ldap-meta cert)
-if [ ! -f "certs/ldaps_bundle.crt" ]; then
-    echo "   Creating LDAPS certificate bundle..."
+# Keep ldaps_bundle.crt in step with the ldap-meta cert. A bundle left over from an
+# earlier cert makes every LDAPS connection fail verification, which directory sync
+# reports only as "Can't contact LDAP server".
+if ! cmp -s certs/ldap-meta.crt certs/ldaps_bundle.crt; then
+    echo "   Updating LDAPS certificate bundle..."
     cp certs/ldap-meta.crt certs/ldaps_bundle.crt
-    echo "✓ LDAPS certificate bundle created"
+    echo "✓ LDAPS certificate bundle updated"
 fi
 
 if [ ! -f "smtp4dev/certs/tls.crt" ] || [ ! -f "smtp4dev/certs/tls.pfx" ]; then

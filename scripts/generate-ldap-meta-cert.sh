@@ -22,6 +22,10 @@ openssl req -x509 -newkey rsa:4096 \
 chmod 600 "$CERT_DIR/ldap-meta.key"
 chmod 644 "$CERT_DIR/ldap-meta.crt"
 
+# Passbolt trusts this file for LDAPS; a stale copy fails verification.
+cp "$CERT_DIR/ldap-meta.crt" "$CERT_DIR/ldaps_bundle.crt"
+
 echo "Certificate generated:"
 echo "  - Private key: $CERT_DIR/ldap-meta.key"
 echo "  - Certificate: $CERT_DIR/ldap-meta.crt"
+echo "  - Passbolt trust bundle: $CERT_DIR/ldaps_bundle.crt"

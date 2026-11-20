@@ -120,6 +120,9 @@ services:
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_ENABLED: "true"
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_ENABLED: "true"
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_VERIFY_PEER: "true"
+      # CADIR must be set too: passbolt ignores CAFILE unless both are, and falls back
+      # to the system store, which only picks up a regenerated cert on restart.
+      PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_CADIR: "/etc/ssl/certs"
       PASSBOLT_PLUGINS_DIRECTORY_SYNC_SECURITY_SSL_CUSTOM_OPTIONS_CAFILE: "/etc/ssl/certs/ldaps_bundle.crt"
       
       PASSBOLT_PLUGINS_SSO_ENABLED: "true"

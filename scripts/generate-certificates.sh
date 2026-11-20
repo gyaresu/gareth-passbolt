@@ -12,6 +12,29 @@ mkdir -p "$KEYS_DIR"
 # mkdir -p "$LDAP_CERTS_DIR"  # No longer needed
 mkdir -p "$CONFIG_SSL_DIR"
 
+# --renew: re-sign the existing service certificates with the existing root CA.
+# The service certs last 365 days and the root CA ten years, so renewing keeps
+# every browser and container that already trusts the root CA working. A full run
+# replaces the root CA, which then has to be trusted again everywhere.
+if [ "${1:-}" = "--renew" ]; then
+    set -e
+    renew() {
+        local name=$1 extfile=$2
+        openssl x509 -req -CA "$KEYS_DIR/rootCA.crt" -CAkey "$KEYS_DIR/rootCA.key" \
+          -in "$KEYS_DIR/$name.csr" -out "$KEYS_DIR/$name.crt" -days 365 \
+          -CAcreateserial -extfile "$extfile"
+        echo "Renewed $name: $(openssl x509 -in "$KEYS_DIR/$name.crt" -noout -enddate)"
+    }
+    renew keycloak "$CONFIG_SSL_DIR/keycloak_ssl_config.txt"
+    renew passbolt "$CONFIG_SSL_DIR/passbolt_ssl_config.txt"
+    renew smtp <(printf "subjectAltName=DNS:smtp.local")
+    renew traefik <(printf "subjectAltName=DNS:traefik.local")
+    cat "$KEYS_DIR/keycloak.crt" "$KEYS_DIR/rootCA.crt" > "$KEYS_DIR/keycloak-chain.crt"
+    cat "$KEYS_DIR/passbolt.crt" "$KEYS_DIR/rootCA.crt" > "$KEYS_DIR/passbolt-chain.crt"
+    echo "Restart traefik, keycloak and passbolt to serve the renewed certificates."
+    exit 0
+fi
+
 # Generate Root CA Certificate
 echo "Generating Root CA certificate..."
 openssl req -x509 -sha256 -days 3650 -newkey rsa:2048 \

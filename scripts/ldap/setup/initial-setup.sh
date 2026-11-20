@@ -210,6 +210,10 @@ rm /tmp/ada.ldif
 verify_user_exists "ada"
 
 # Create new groups
+# Note: Using unified namespace DN format (dc=passbolt,dc=unified,dc=local) in uniqueMember attributes.
+# The meta backend rewrites entry DNs but not DN-valued attributes, so members written as
+# dc=passbolt,dc=local match no synced user and directory sync drops them.
+UNIFIED_USERS_DN="ou=users,dc=passbolt,dc=unified,dc=local"
 echo "Creating groups..."
 
 # Passbolt group
@@ -220,11 +224,11 @@ objectClass: groupOfUniqueNames
 objectClass: top
 cn: passbolt
 description: Passbolt Users Group
-uniqueMember: cn=ada,ou=users,dc=passbolt,dc=local
-uniqueMember: cn=betty,ou=users,dc=passbolt,dc=local
-uniqueMember: cn=carol,ou=users,dc=passbolt,dc=local
-uniqueMember: cn=dame,ou=users,dc=passbolt,dc=local
-uniqueMember: cn=edith,ou=users,dc=passbolt,dc=local
+uniqueMember: cn=ada,${UNIFIED_USERS_DN}
+uniqueMember: cn=betty,${UNIFIED_USERS_DN}
+uniqueMember: cn=carol,${UNIFIED_USERS_DN}
+uniqueMember: cn=dame,${UNIFIED_USERS_DN}
+uniqueMember: cn=edith,${UNIFIED_USERS_DN}
 EOF
 docker compose cp /tmp/passbolt.ldif ldap1:/tmp/passbolt.ldif
 docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/passbolt.ldif
@@ -240,9 +244,9 @@ objectClass: groupOfUniqueNames
 objectClass: top
 cn: developers
 description: Development Team
-uniqueMember: cn=ada,ou=users,dc=passbolt,dc=local
-uniqueMember: cn=betty,ou=users,dc=passbolt,dc=local
-uniqueMember: cn=carol,ou=users,dc=passbolt,dc=local
+uniqueMember: cn=ada,${UNIFIED_USERS_DN}
+uniqueMember: cn=betty,${UNIFIED_USERS_DN}
+uniqueMember: cn=carol,${UNIFIED_USERS_DN}
 EOF
 docker compose cp /tmp/developers.ldif ldap1:/tmp/developers.ldif
 docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/developers.ldif
@@ -258,8 +262,8 @@ objectClass: groupOfUniqueNames
 objectClass: top
 cn: demoteam
 description: Demo Team
-uniqueMember: cn=betty,ou=users,dc=passbolt,dc=local
-uniqueMember: cn=edith,ou=users,dc=passbolt,dc=local
+uniqueMember: cn=betty,${UNIFIED_USERS_DN}
+uniqueMember: cn=edith,${UNIFIED_USERS_DN}
 EOF
 docker compose cp /tmp/demoteam.ldif ldap1:/tmp/demoteam.ldif
 docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/demoteam.ldif
@@ -275,8 +279,8 @@ objectClass: groupOfUniqueNames
 objectClass: top
 cn: admins
 description: Administrators
-uniqueMember: cn=ada,ou=users,dc=passbolt,dc=local
-uniqueMember: cn=dame,ou=users,dc=passbolt,dc=local
+uniqueMember: cn=ada,${UNIFIED_USERS_DN}
+uniqueMember: cn=dame,${UNIFIED_USERS_DN}
 EOF
 docker compose cp /tmp/admins.ldif ldap1:/tmp/admins.ldif
 docker compose exec ldap1 ldapadd -x -H ldaps://localhost:636 -D "cn=admin,dc=passbolt,dc=local" -w P4ssb0lt -f /tmp/admins.ldif
