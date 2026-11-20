@@ -1,5 +1,5 @@
-# Builds the demo-data seeder. data.json is embedded into the binary at build
-# time; the user keys and CA cert are mounted at run time (see docker-compose).
+# Builds the demo-data seeder. datasets/*.json are embedded into the binary at
+# build time; the user keys and CA cert are mounted at run time (see docker-compose).
 FROM golang:1.26-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./

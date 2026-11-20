@@ -118,9 +118,17 @@ extension fetch a second page.
 | `COUNT` | `10000` | How many resources to generate |
 | `BULK_OWNER` | `ada@passbolt.com` | Who owns the vault |
 | `BULK_SHARE_PCT` | `0` | Percentage of resources to share, 0 to 100 |
-| `BULK_SHARE_GROUPS` | `developers,demoteam` | Groups to share with, when sharing is on |
+| `BULK_SHARE_GROUPS` | `project-teams` | Groups to share with, when sharing is on |
 | `TIMEOUT_MINUTES` | scaled to the set | Hard ceiling on the whole run |
 | `WORKERS` | 4 above 1000 resources, else 1 | How many resources to create in parallel |
+
+Share with a group that has members besides the owner, or the share re-encrypts the
+secret to the owner's own key and tests nothing. On this stack that means
+`project-teams` (4 members), `developers` or `demoteam` (3 each), or `security` /
+`operations` / `creative` (2 each). The seeder warns when a share group has one
+member or fewer. On a stack set up before the LDAP1 group fix, `developers` and
+`demoteam` still hold ada alone until `scripts/ldap/setup/fix-group-members.sh` and
+`scripts/directory-sync.sh` have run; see the LDAP group note in the top-level README.
 
 **How long it actually takes.** Two complete runs on a local stack, at the default
 four workers:
@@ -183,7 +191,26 @@ A set that doesn't exist prints the available names.
   flagged; favourites where flagged.
 - Everything is owned by the set's `owner` (Ada, the admin). Items outside the
   private folders are shared with the `shareGroups` so the demo shows real shared
-  vaults.
+  vaults, mostly at "can update", with a few entries and one folder per set at
+  "can read" or "owner" so the share dialog shows a mix.
+- A few entries per set with a password expiry date, some already expired and
+  some coming up, and a few with comments.
+
+### Activity from other users
+
+A fresh seed has one actor: the owner created everything in the same minute. Set
+`ACTIVITY=1` to follow the seed with an activity pass, which logs in as every other
+user with a key in `keys/gpg` and reads a few of the secrets shared with them. The
+activity sidebar and the action logs then show several people working with shared
+entries, which suits the audit logging demo.
+
+```bash
+docker compose --profile seed run --rm -e RESET=1 -e ACTIVITY=1 seeder
+```
+
+A user who cannot log in (for example one who has not finished setup) is warned
+about and skipped. A user with no shares has nothing to read, so the pass does
+nothing for them.
 
 ## Change what gets created
 
@@ -225,6 +252,12 @@ Optional fields for richer entries:
 - `shared` - `true` shares it with the groups in `shareGroups`.
 - `shareUsers` - an array of user emails to share the entry with directly, on top of
   any group share.
+- `permission` - the level for the entry's shares: `read`, `update` (default) or
+  `owner`. Folders take it too, next to their `shared` flag.
+- `expires` - the password expiry date as a day offset from the seed run: `-30` is
+  already expired, `7` expires in a week. Taken from the run time, so every re-seed
+  shows the same states.
+- `comments` - an array of comment texts added to the entry, as the owner.
 - `customFields` - an array of `{ "name", "value", "type" }`. `type` is one of
   `text` (default), `password`, `uri`, `number`, `boolean`; the value is stored
   encrypted.
@@ -243,6 +276,8 @@ All have defaults suited to this stack; override with environment variables:
 | `PASSPHRASE` | the owner's email | Owner key passphrase |
 | `RESET` | unset | Set to `1` to delete all resources/folders before seeding |
 | `CLEAN` | unset | Set to `1` to delete all resources/folders and stop (no seeding) |
+| `ACTIVITY` | unset | Set to `1` to have the other users read shared secrets after seeding |
+| `ACTIVITY_READS` | `3` | How many shared secrets each user reads in the activity pass |
 
 ## Notes
 
@@ -250,5 +285,6 @@ All have defaults suited to this stack; override with environment variables:
   here is a real secret.
 - Tags are not created (not yet in the Go SDK). Everything else on the entry is.
 - Timestamps are set by the server at creation, so entries show fresh dates.
+  Expiry dates are the exception: they come from `expires`.
 - To re-seed cleanly, use `RESET=1` (above) rather than wiping the stack, which
   would destroy the user accounts and force a manual per-user re-login.

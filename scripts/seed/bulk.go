@@ -58,7 +58,11 @@ func envInt(key string, def int) int {
 
 // bulkShareGroups is the default set of groups to share with when sharing is
 // enabled. Groups that do not exist on the instance are warned about and skipped.
-var bulkShareGroups = []string{"developers", "demoteam"}
+// project-teams holds the most members besides the owner (john.smith,
+// michael.chen, sarah.johnson from LDAP2). A group whose only member is the owner
+// re-encrypts the secret to the owner's own key and exercises nothing;
+// resolveGroups warns about one.
+var bulkShareGroups = []string{"project-teams"}
 
 // generateBulk builds a seed set of count resources spread over a folder tree.
 //

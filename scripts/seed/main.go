@@ -7,8 +7,8 @@
 // creates resources through the public API. Nothing is written to the database
 // directly, so it stays correct across schema changes.
 //
-// The catalogue of what to create lives in data.json (edit that to change the
-// look). Passwords and TOTP seeds are generated at run time and are throwaway.
+// The catalogue of what to create lives in datasets/*.json (edit those to change
+// the look). Passwords and TOTP seeds are generated at run time and are throwaway.
 //
 // Configuration (env, all have sensible defaults for this stack):
 //
@@ -42,12 +42,17 @@ import (
 //go:embed datasets/*.json
 var datasetsFS embed.FS
 
-// permissionUpdate is Passbolt's "can update" permission level (1 read, 7 update, 15 owner).
-const permissionUpdate = 7
+// Passbolt permission levels for a share.
+const (
+	permissionRead   = 1
+	permissionUpdate = 7
+	permissionOwner  = 15
+)
 
 type folderSpec struct {
-	Path   string `json:"path"`
-	Shared bool   `json:"shared"`
+	Path       string `json:"path"`
+	Shared     bool   `json:"shared"`
+	Permission string `json:"permission"` // read, update (default), owner
 }
 
 type customFieldSpec struct {
@@ -72,7 +77,42 @@ type resourceSpec struct {
 	Favorite     bool              `json:"favorite"`
 	Shared       bool              `json:"shared"`
 	ShareUsers   []string          `json:"shareUsers"` // emails to share with directly
+	Permission   string            `json:"permission"` // read, update (default), owner
 	CustomFields []customFieldSpec `json:"customFields"`
+	// Expires is a day offset from now for the password expiry date: negative is
+	// already expired, positive is still to come. Unset leaves no expiry date.
+	Expires  *int     `json:"expires"`
+	Comments []string `json:"comments"`
+}
+
+// permissionLevel maps a set's permission name to Passbolt's numeric level.
+// Empty means update, which is what every share used before the field existed.
+func permissionLevel(name string) (int, error) {
+	switch name {
+	case "", "update":
+		return permissionUpdate, nil
+	case "read":
+		return permissionRead, nil
+	case "owner":
+		return permissionOwner, nil
+	}
+	return 0, fmt.Errorf("unknown permission %q (want read, update or owner)", name)
+}
+
+// validateSet rejects a bad permission name before anything is created, so a typo
+// does not leave a half-seeded vault behind.
+func validateSet(data seedData) error {
+	for _, f := range data.Folders {
+		if _, err := permissionLevel(f.Permission); err != nil {
+			return fmt.Errorf("folder %q: %w", f.Path, err)
+		}
+	}
+	for _, r := range data.Resources {
+		if _, err := permissionLevel(r.Permission); err != nil {
+			return fmt.Errorf("resource %q: %w", r.Name, err)
+		}
+	}
+	return nil
 }
 
 type seedData struct {
@@ -145,6 +185,9 @@ func main() {
 func run() error {
 	data, setName, err := loadDataset()
 	if err != nil {
+		return err
+	}
+	if err := validateSet(data); err != nil {
 		return err
 	}
 	fmt.Printf("Dataset: %s\n", setName)
@@ -220,7 +263,7 @@ func run() error {
 		return err
 	}
 
-	// Create folders parents-first (data.json is ordered that way) and share
+	// Create folders parents-first (the set files are ordered that way) and share
 	// the shared ones with the groups.
 	folderIDs := map[string]string{}
 	for _, f := range data.Folders {
@@ -232,7 +275,8 @@ func run() error {
 		}
 		folderIDs[f.Path] = id
 		if f.Shared && len(groupIDs) > 0 {
-			if err := helper.ShareFolderWithUsersAndGroups(ctx, client, id, nil, groupIDs, permissionUpdate); err != nil {
+			level, _ := permissionLevel(f.Permission) // checked by validateSet
+			if err := helper.ShareFolderWithUsersAndGroups(ctx, client, id, nil, groupIDs, level); err != nil {
 				return fmt.Errorf("sharing folder %q: %w", f.Path, err)
 			}
 		}
@@ -267,6 +311,10 @@ func run() error {
 
 	fmt.Printf("Done: %d resources (%d favourites, %d shared) in %s\n",
 		created, favourited, shared, time.Since(started).Round(time.Second))
+
+	if wantActivity() {
+		return simulateActivity(ctx, httpClient, baseURL, keysDir, data.Owner)
+	}
 	return nil
 }
 
@@ -377,6 +425,21 @@ func wantReset() bool {
 	return false
 }
 
+// wantActivity reports whether the other-user activity pass was requested, via
+// ACTIVITY=1 (env) or an --activity argument.
+func wantActivity() bool {
+	switch os.Getenv("ACTIVITY") {
+	case "1", "true", "yes":
+		return true
+	}
+	for _, a := range os.Args[1:] {
+		if a == "--activity" || a == "activity" {
+			return true
+		}
+	}
+	return false
+}
+
 // wantClean reports whether a delete-only run was requested, via CLEAN=1 (env)
 // or a --clean argument. Unlike reset, this removes the data and stops.
 func wantClean() bool {
@@ -455,26 +518,31 @@ func httpClientTrusting(caPath string) (*http.Client, error) {
 }
 
 // resolveGroups maps group names to their IDs, which the share calls require.
+// A group with one member or fewer is shared with anyway but warned about: the
+// share then reaches nobody but the owner, which is easy to miss in the UI.
 func resolveGroups(ctx context.Context, client *api.Client, names []string) ([]string, error) {
 	if len(names) == 0 {
 		return nil, nil
 	}
-	groups, err := client.GetGroups(ctx, &api.GetGroupsOptions{})
+	groups, err := client.GetGroups(ctx, &api.GetGroupsOptions{ContainGroupsUsers: true})
 	if err != nil {
 		return nil, fmt.Errorf("listing groups: %w", err)
 	}
-	byName := map[string]string{}
+	byName := map[string]api.Group{}
 	for _, g := range groups {
-		byName[g.Name] = g.ID
+		byName[g.Name] = g
 	}
 	ids := make([]string, 0, len(names))
 	for _, name := range names {
-		id, ok := byName[name]
+		g, ok := byName[name]
 		if !ok {
 			fmt.Printf("warning: group %q not found, skipping share to it\n", name)
 			continue
 		}
-		ids = append(ids, id)
+		if len(g.GroupUsers) <= 1 {
+			fmt.Printf("warning: group %q has %d member(s), so sharing with it reaches no one else\n", name, len(g.GroupUsers))
+		}
+		ids = append(ids, g.ID)
 	}
 	return ids, nil
 }

@@ -7,7 +7,8 @@
   "folders": [
     {
       "path": "Admin",
-      "shared": true
+      "shared": true,
+      "permission": "read"
     },
     {
       "path": "Clients",
@@ -77,7 +78,8 @@
       "color": "#FC6D26",
       "totp": true,
       "favorite": true,
-      "shared": true
+      "shared": true,
+      "permission": "owner"
     },
     {
       "name": "Postgresql",
@@ -113,7 +115,8 @@
       "color": "#1DA1F2",
       "totp": false,
       "favorite": false,
-      "shared": true
+      "shared": true,
+      "permission": "read"
     },
     {
       "name": "Twitter",
@@ -149,7 +152,9 @@
       "color": "#635BFF",
       "totp": true,
       "favorite": true,
-      "shared": true
+      "shared": true,
+      "permission": "read",
+      "comments": ["Finance owns this account. Ask before changing payout settings."]
     },
     {
       "name": "PhpMyAdmin",
@@ -221,7 +226,9 @@
       "color": "#FF9900",
       "totp": true,
       "favorite": true,
-      "shared": true
+      "shared": true,
+      "permission": "owner",
+      "comments": ["Break-glass only. Use your SSO role for day-to-day access."]
     },
     {
       "name": "AWS S3",
@@ -281,7 +288,8 @@
       "color": "#E42527",
       "totp": false,
       "favorite": false,
-      "shared": true
+      "shared": true,
+      "expires": 14
     },
     {
       "name": "Odoo",
@@ -377,7 +385,9 @@
       "color": "#430098",
       "totp": false,
       "favorite": false,
-      "shared": true
+      "shared": true,
+      "expires": -45,
+      "comments": ["Legacy app, moving to AWS. Rotate after the cut-over."]
     },
     {
       "name": "Azure",
@@ -425,7 +435,8 @@
       "color": "#E37400",
       "totp": false,
       "favorite": false,
-      "shared": true
+      "shared": true,
+      "permission": "read"
     },
     {
       "name": "Matomo",
@@ -545,7 +556,8 @@
       "color": "#0078D4",
       "totp": false,
       "favorite": false,
-      "shared": true
+      "shared": true,
+      "expires": -3
     },
     {
       "name": "MySQL Slave 1",
@@ -557,7 +569,8 @@
       "color": "#00758F",
       "totp": false,
       "favorite": false,
-      "shared": true
+      "shared": true,
+      "expires": 5
     },
     {
       "name": "MySQL Slave 2",

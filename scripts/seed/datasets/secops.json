@@ -9,14 +9,14 @@
     { "path": "Monitoring", "shared": true },
     { "path": "AppSec", "shared": true },
     { "path": "Incident Response", "shared": true },
-    { "path": "Threat Intel", "shared": true },
+    { "path": "Threat Intel", "shared": true, "permission": "read" },
     { "path": "Personal", "shared": false }
   ],
   "resources": [
     {
       "name": "Splunk", "username": "soc@passbolt.com", "uri": "https://www.splunk.com/",
       "folder": "Monitoring", "description": "SIEM and log analytics.",
-      "icon": 57, "color": "#65A637", "totp": true, "favorite": true, "shared": true
+      "icon": 57, "color": "#65A637", "totp": true, "favorite": true, "shared": true, "permission": "read"
     },
     {
       "name": "CrowdStrike Falcon", "username": "soc@passbolt.com", "uri": "https://falcon.crowdstrike.com/",
@@ -35,7 +35,7 @@
     {
       "name": "VPN Gateway", "username": "netsec@passbolt.com", "uri": "https://openvpn.net/",
       "folder": "Network", "description": "Remote access VPN admin.",
-      "icon": 8, "color": "#EA7E20", "totp": false, "favorite": false, "shared": true
+      "icon": 8, "color": "#EA7E20", "totp": false, "favorite": false, "shared": true, "expires": 7
     },
     {
       "name": "Cloudflare WAF", "username": "netsec@passbolt.com",
@@ -50,23 +50,25 @@
     {
       "name": "CyberArk PAM", "username": "iam@passbolt.com", "uri": "https://www.cyberark.com/",
       "folder": "Identity & Access", "description": "Privileged access management.",
-      "icon": 0, "color": "#00A9E0", "totp": true, "favorite": false, "shared": true
+      "icon": 0, "color": "#00A9E0", "totp": true, "favorite": false, "shared": true, "permission": "owner",
+      "comments": ["Vault admin. Every checkout is recorded; raise a ticket before use."]
     },
     {
       "name": "Okta", "username": "iam@passbolt.com", "uri": "https://www.okta.com/",
       "folder": "Identity & Access", "description": "Workforce SSO and MFA.",
-      "icon": 9, "color": "#007DC1", "totp": true, "favorite": true, "shared": true
+      "icon": 9, "color": "#007DC1", "totp": true, "favorite": true, "shared": true, "expires": 21
     },
     {
       "name": "HashiCorp Vault", "username": "platform@passbolt.com", "uri": "https://www.vaultproject.io/",
       "folder": "Infrastructure", "description": "Secrets management root token (break-glass).",
-      "icon": 0, "color": "#FFD814", "totp": false, "favorite": false, "shared": true,
+      "icon": 0, "color": "#FFD814", "totp": false, "favorite": false, "shared": true, "permission": "owner",
       "shareUsers": ["betty@passbolt.com"]
     },
     {
       "name": "Internal CA", "username": "platform@passbolt.com", "uri": "https://smallstep.com/",
       "folder": "Infrastructure", "description": "Private certificate authority.",
-      "icon": 67, "color": "#4A5568", "totp": false, "favorite": false, "shared": true
+      "icon": 67, "color": "#4A5568", "totp": false, "favorite": false, "shared": true, "expires": -10,
+      "comments": ["Root CA passphrase. Rotation is booked for the next key ceremony."]
     },
     {
       "name": "Wiz", "username": "cloudsec@passbolt.com", "uri": "https://www.wiz.io/",
@@ -101,7 +103,7 @@
     {
       "name": "VirusTotal", "username": "ti@passbolt.com", "uri": "https://www.virustotal.com/",
       "folder": "Threat Intel", "description": "File and URL reputation.",
-      "icon": 1, "color": "#394EFF", "totp": false, "favorite": false, "shared": true
+      "icon": 1, "color": "#394EFF", "totp": false, "favorite": false, "shared": true, "permission": "read"
     },
     {
       "name": "PagerDuty", "username": "oncall@passbolt.com", "uri": "https://www.pagerduty.com/",
@@ -112,7 +114,8 @@
       "name": "Break-glass procedure", "type": "v5-note",
       "folder": "Incident Response",
       "description": "Emergency access steps.\n1. Retrieve Vault root token from this vault.\n2. Notify the CISO and on-call lead.\n3. Rotate the token within 4 hours of use.\nThis is demo text, not a real procedure.",
-      "icon": 2, "color": "#D40000", "favorite": false, "shared": true
+      "icon": 2, "color": "#D40000", "favorite": false, "shared": true,
+      "comments": ["Reviewed after the last tabletop exercise."]
     },
     {
       "name": "IR runbook: ransomware", "type": "v5-note",

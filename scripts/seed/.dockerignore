@@ -1,0 +1,2 @@
+# A locally built binary (go build in this directory); the image compiles its own.
+seed

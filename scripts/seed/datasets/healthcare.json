@@ -6,7 +6,7 @@
     { "path": "Clinical", "shared": true },
     { "path": "Pharmacy", "shared": true },
     { "path": "Laboratory", "shared": true },
-    { "path": "Billing & Insurance", "shared": true },
+    { "path": "Billing & Insurance", "shared": true, "permission": "read" },
     { "path": "IT", "shared": true },
     { "path": "Personal", "shared": false }
   ],
@@ -14,7 +14,8 @@
     {
       "name": "Epic EHR", "username": "clinician@clinic.example", "uri": "https://www.epic.com/",
       "folder": "Clinical", "description": "Electronic health record system.",
-      "icon": 10, "color": "#B71234", "totp": true, "favorite": true, "shared": true,
+      "icon": 10, "color": "#B71234", "totp": true, "favorite": true, "shared": true, "permission": "owner",
+      "comments": ["Integration account for the ward kiosks. Contact IT before changing."],
       "customFields": [
         { "name": "Facility ID", "value": "FAC-00421" },
         { "name": "Environment", "value": "Production" }
@@ -43,12 +44,13 @@
     {
       "name": "Scheduling", "username": "reception@clinic.example", "uri": "https://www.athenahealth.com/",
       "folder": "Reception", "description": "Appointments and clinician rota.",
-      "icon": 39, "color": "#DD6B20", "totp": false, "favorite": false, "shared": true
+      "icon": 39, "color": "#DD6B20", "totp": false, "favorite": false, "shared": true, "expires": 3
     },
     {
       "name": "Surescripts e-Prescribing", "username": "pharmacist@clinic.example", "uri": "https://surescripts.com/",
       "folder": "Pharmacy", "description": "Electronic prescriptions.",
-      "icon": 10, "color": "#0E7C61", "totp": true, "favorite": false, "shared": true,
+      "icon": 10, "color": "#0E7C61", "totp": true, "favorite": false, "shared": true, "expires": -14,
+      "comments": ["Certificate renewal pending with the vendor."],
       "customFields": [
         { "name": "DEA number", "value": "XD1234563" },
         { "name": "NPI", "value": "1760854552" }
@@ -67,22 +69,22 @@
     {
       "name": "Availity Claims", "username": "billing@clinic.example", "uri": "https://www.availity.com/",
       "folder": "Billing & Insurance", "description": "Insurance eligibility and claims.",
-      "icon": 37, "color": "#005EB8", "totp": false, "favorite": false, "shared": true
+      "icon": 37, "color": "#005EB8", "totp": false, "favorite": false, "shared": true, "permission": "read"
     },
     {
       "name": "athenaCollector", "username": "billing@clinic.example", "uri": "https://www.athenahealth.com/",
       "folder": "Billing & Insurance", "description": "Revenue cycle and billing.",
-      "icon": 66, "color": "#2CA01C", "totp": false, "favorite": false, "shared": true
+      "icon": 66, "color": "#2CA01C", "totp": false, "favorite": false, "shared": true, "permission": "read"
     },
     {
       "name": "Microsoft 365", "username": "it@clinic.example", "uri": "https://admin.microsoft.com/",
       "folder": "IT", "description": "Email, identity and admin centre.",
-      "icon": 19, "color": "#D83B01", "totp": true, "favorite": true, "shared": true
+      "icon": 19, "color": "#D83B01", "totp": true, "favorite": true, "shared": true, "permission": "owner"
     },
     {
       "name": "Backup & DR", "username": "it@clinic.example", "uri": "https://www.veeam.com/",
       "folder": "IT", "description": "Backup console for clinical systems.",
-      "icon": 26, "color": "#00B336", "totp": false, "favorite": false, "shared": true
+      "icon": 26, "color": "#00B336", "totp": false, "favorite": false, "shared": true, "expires": 30
     },
     {
       "name": "HR / Payroll", "username": "hr@clinic.example", "uri": "https://www.workday.com/",

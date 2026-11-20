@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/passbolt/go-passbolt/api"
 	"github.com/passbolt/go-passbolt/helper"
@@ -190,7 +191,8 @@ func seedResources(
 	return int(counts.created.Load()), int(counts.favourited.Load()), int(counts.shared.Load()), firstErr
 }
 
-// seedOne creates a single resource and applies its favourite and shares.
+// seedOne creates a single resource and applies its expiry date, comments,
+// favourite and shares.
 func seedOne(
 	ctx context.Context,
 	client *api.Client,
@@ -204,6 +206,18 @@ func seedOne(
 	id, err := helper.CreateResourceGeneric(ctx, client, slug, folderIDs[r.Folder], metadata, secret)
 	if err != nil {
 		return false, false, fmt.Errorf("creating resource %q: %w", r.Name, err)
+	}
+
+	if r.Expires != nil {
+		if err := setExpiry(ctx, client, id, expiryFromOffset(time.Now(), *r.Expires)); err != nil {
+			return false, false, fmt.Errorf("setting expiry on %q: %w", r.Name, err)
+		}
+	}
+
+	for _, text := range r.Comments {
+		if _, err := client.CreateComment(ctx, id, api.Comment{Content: text}); err != nil {
+			return false, false, fmt.Errorf("commenting on %q: %w", r.Name, err)
+		}
 	}
 
 	if r.Favorite {
@@ -226,11 +240,38 @@ func seedOne(
 		}
 	}
 	if len(shareGroupIDs) > 0 || len(shareUserIDs) > 0 {
-		if err := helper.ShareResourceWithUsersAndGroups(ctx, client, id, shareUserIDs, shareGroupIDs, permissionUpdate); err != nil {
+		level, _ := permissionLevel(r.Permission) // checked by validateSet
+		if err := helper.ShareResourceWithUsersAndGroups(ctx, client, id, shareUserIDs, shareGroupIDs, level); err != nil {
 			return favourited, false, fmt.Errorf("sharing resource %q: %w", r.Name, err)
 		}
 		shared = true
 	}
 
 	return favourited, shared, nil
+}
+
+// expiryFromOffset turns a set's day offset into an absolute expiry date, taken
+// from now so that every re-seed shows the same states rather than dates that
+// drift into the past.
+func expiryFromOffset(now time.Time, days int) time.Time {
+	return now.AddDate(0, 0, days).Truncate(time.Second)
+}
+
+// setExpiry sets a resource's password expiry date. The SDK's create helper has
+// no way to pass one, so this re-sends the resource's own encrypted metadata
+// unchanged with the date added; the update endpoint accepts expired alongside
+// metadata and leaves the secret alone.
+func setExpiry(ctx context.Context, client *api.Client, id string, at time.Time) error {
+	r, err := client.GetResource(ctx, id)
+	if err != nil {
+		return err
+	}
+	_, err = client.UpdateResource(ctx, id, api.Resource{
+		ResourceTypeID:  r.ResourceTypeID,
+		MetadataKeyID:   r.MetadataKeyID,
+		MetadataKeyType: r.MetadataKeyType,
+		Metadata:        r.Metadata,
+		Expired:         &api.Time{Time: at},
+	})
+	return err
 }
